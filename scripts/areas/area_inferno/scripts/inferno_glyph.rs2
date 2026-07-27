@@ -78,8 +78,15 @@ npc_setmode(none);
 // The glyph is what the waves and Jad shoot at, so it has to be able to take a
 // scripted hit as well as a player's. Without this the adds fire at it forever
 // and the 600 hitpoints that make tagging them urgent never come off.
+//
+// Those 600 are the clock the whole fight runs on, and they come off from
+// several directions at once, so every hit is reported the same way Zuk's is.
 [ai_queue2,inferno_zuk_shield]
-~npc_default_damage(last_int);
+def_int $damage = last_int;
+// Reported before the damage is applied: ~npc_default_damage returns out of the
+// trigger on its own early exits, so anything after the call never runs.
+~inferno_report_health("Ancestral Glyph", max(sub(npc_stat(hitpoints), $damage), 0));
+~npc_default_damage($damage);
 
 [ai_queue3,inferno_zuk_shield]
 npc_anim(npc_param(death_anim), 0);
