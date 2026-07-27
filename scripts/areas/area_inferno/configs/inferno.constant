@@ -152,10 +152,12 @@
 // Jad's centre; Jad is five wide, so its centre is two tiles in from its coord.
 ^inferno_jad_healer_dx = 2
 ^inferno_jad_healer_dz = 7
-// They outlive Jad by exactly as long as his death takes to play, rather than
-// blinking out the instant he dies. His death seq runs 154 client cycles, a
-// shade over five server ticks, so six covers it.
-^inferno_jad_death_ticks = 6
+// They outlive Jad rather than blinking out the instant he dies. His death seq
+// runs 154 client cycles — a shade over five server ticks — but the stock death
+// path also walks him, waits up to two ticks for him to arrive, and holds a
+// further tick before removing him; measured, he leaves eight ticks after the
+// trigger. Ten clears all of it with room for the arrive delay to vary.
+^inferno_jad_death_ticks = 10
 
 // Where ::~tagheal stands the player: the healers sit on the shelf at z 5363
 // and only reach six tiles, so the arena entry point is well outside their

@@ -153,16 +153,11 @@ while (.npc_findnext = true) {
 }
 gosub(npc_default_death);
 
-// Jad's death has played out — but he is not gone the instant it finishes. The
-// stock death path walks him, waits for him to arrive, plays the animation and
-// only then removes him, and how long that adds is not ours to know. So poll
-// rather than trust a count: the healers stand there until he has actually
-// left, and go on the tick after.
+// Jad's death has played out and he is off the map. This has to be a count
+// rather than a check on whether he is still there: a dying npc is delayed,
+// and a delayed npc is already invisible to npc_find, so polling for him reads
+// "gone" from the first tick of his death and takes the healers with him.
 [ai_queue5,inferno_hurkot]
-if (.npc_find(npc_coord, inferno_jad, ^inferno_scan_range, ^vis_off) = true) {
-    npc_queue(5, 0, 1);
-    return;
-}
 npc_del;
 
 // ---- Yt-HurKot ----------------------------------------------------------
