@@ -8,6 +8,26 @@
 if (%npc_action_delay > map_clock) {
     return;
 }
+// Like the wave adds, Jad arrives pointed at the glyph and stays there until
+// the player hits it — and it hits far harder than they do, which is why
+// tagging it is the first thing you do when it lands. Jad hunts nothing: it
+// finds the player through its own huntall below, so being provoked only has
+// to flip the flag.
+if (%inferno_add_angry ! 1) {
+    if (.npc_find(npc_coord, inferno_zuk_shield, ^inferno_scan_range, ^vis_off) = true) {
+        %npc_action_delay = add(map_clock, npc_param(attackrate));
+        npc_facesquare(.npc_coord);
+        npc_anim(inferno_jad_magic, 0);
+        spotanim_npc(inferno_jad_magic_gfx, 0, 60);
+        def_int $glyph_hit = ~npc_to_npc_projectile(.npc_uid, inferno_jad_proj1, 128, 31, 62, 16, 10, 32, 8);
+        ~npc_to_npc_projectile(.npc_uid, inferno_jad_proj2, 128, 31, 66, 16, 14, 32, 8);
+        ~npc_to_npc_projectile(.npc_uid, inferno_jad_proj3, 128, 31, 70, 16, 20, 32, 8);
+        .npc_queue(2, randominc(^inferno_jad_maxhit), calc($glyph_hit / 30));
+        return;
+    }
+    // No glyph left to shoot; the player is all that is here.
+    ~inferno_add_provoked;
+}
 huntall(npc_coord, ^inferno_scan_range, ^vis_off);
 while (huntnext = true) {
     if (npc_range(coord) > npc_param(attackrange)) {
@@ -73,6 +93,8 @@ queue*(playerhit_n_retaliate, calc($duration / 30))(npc_uid);
 // ---- healers ------------------------------------------------------------
 
 [ai_queue2,inferno_jad]
+// Being hit is what takes Jad off the glyph, exactly as it is for the adds.
+~inferno_add_provoked;
 def_int $damage = last_int;
 // Decided before the damage lands, for the same reason as Zuk's: the default
 // damage proc can return out of the whole trigger.

@@ -35,6 +35,10 @@
 // A Zuk healer heals until the player hits it, then switches to attacking.
 [inferno_mejjak_angry]
 
+// The same idea for the wave adds and Jad: they arrive aimed at the glyph and
+// only turn on the player once the player has given them a reason to.
+[inferno_add_angry]
+
 // Jad spawns its own healers once, at half health.
 [inferno_jad_healers_spawned]
 

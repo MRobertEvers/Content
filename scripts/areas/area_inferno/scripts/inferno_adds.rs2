@@ -1,11 +1,65 @@
 // The wave adds — Jal-Xil (ranger) and Jal-Zek (mager) — and Jal-MejJak, the
 // healers that turn up when Zuk is nearly dead.
 //
-// Unlike Zuk, the adds use the stock hunt/attack modes to close on the player;
+// An add arrives shooting the *glyph*, not the player: Kronos sets its combat
+// target to the shield the tick it spawns. That is the whole reason a wave is
+// urgent — 600 hitpoints of safespot are being chewed through while you decide
+// what to do about it — and it is why the fight is about tagging them off the
+// glyph rather than out-damaging them.
+//
+// It turns on the player when the player gives it a reason to: a hit arrives
+// through ai_queue2, which is where every player attack lands. Until then the
+// add does not hunt at all, which is why neither carries a `huntmode` in
+// inferno.npc — being provoked is what hands it one.
+//
+// Once provoked they use the stock hunt/attack modes to close on the player;
 // only the attack itself is scripted, because both fire twin projectiles the
 // default ranged path cannot express.
 
+/**
+ * Take an add off the glyph. Idempotent, and deliberately does nothing but set
+ * the flag: it is called from ai_queue2, and a queued npc script runs with no
+ * active player at all, so there is no one here to be told to attack. What
+ * actually turns the add around is the hunt its caller gives it — see the two
+ * wave adds below. Jad needs none, because it finds the player itself.
+ */
+[proc,inferno_add_provoked]
+%inferno_add_angry = 1;
+
+// The glyph lookup has to be written out at every site that shoots it rather
+// than wrapped in a proc: the compiler tracks whether the secondary npc slot is
+// live per branch, and a proc returning "yes I found it" does not convince it.
+// Killing the glyph is the one thing that releases an add without the player
+// ever hitting it — there is nothing else left in the arena to shoot.
+
 // ---- Jal-Xil, the ranger ------------------------------------------------
+
+// One bolt rather than the player attack's pair: the twin shot leaves from
+// opposite corners of the footprint, and an npc-to-npc projectile always
+// departs from npc_coord, so both halves would be drawn on top of each other.
+[ai_timer,inferno_xil]
+if (%npc_action_delay > map_clock | %inferno_add_angry = 1) {
+    return;
+}
+if (.npc_find(npc_coord, inferno_zuk_shield, ^inferno_scan_range, ^vis_off) = false) {
+    ~inferno_add_provoked;
+    npc_sethuntmode(inferno_add);
+    return;
+}
+%npc_action_delay = add(map_clock, npc_param(attackrate));
+npc_facesquare(.npc_coord);
+npc_anim(inferno_xil_range, 0);
+def_int $duration = ~npc_to_npc_projectile(.npc_uid, inferno_xil_proj, 60, 31, 50, 16, 40, 0, 8);
+.npc_queue(2, randominc(^inferno_xil_maxhit), calc($duration / 30));
+
+[ai_queue2,inferno_xil]
+// Set before the damage lands — ~npc_default_damage can return out of the
+// trigger, so anything after the call is unreachable.
+~inferno_add_provoked;
+// The hunt is what sends it after whoever hit it; there is no active player in
+// a queued npc script to hand it directly.
+npc_sethuntmode(inferno_add);
+~npc_default_damage(last_int);
 
 [ai_opplayer2,inferno_xil] npc_setmode(applayer2);
 
@@ -33,6 +87,28 @@ def_int $twin = ~player_projectile(movecoord(npc_coord, 2, 0, 1), coord, uid, in
 ~inferno_hit_player($duration, ^ranged_style, ^inferno_xil_maxhit);
 
 // ---- Jal-Zek, the mager -------------------------------------------------
+
+[ai_timer,inferno_zek]
+if (%npc_action_delay > map_clock | %inferno_add_angry = 1) {
+    return;
+}
+if (.npc_find(npc_coord, inferno_zuk_shield, ^inferno_scan_range, ^vis_off) = false) {
+    ~inferno_add_provoked;
+    npc_sethuntmode(inferno_add);
+    return;
+}
+%npc_action_delay = add(map_clock, npc_param(attackrate));
+npc_facesquare(.npc_coord);
+npc_anim(inferno_zek_magic, 0);
+def_int $duration = ~npc_to_npc_projectile(.npc_uid, inferno_zek_proj, 96, 31, 28, 16, 36, 192, 8);
+.npc_queue(2, randominc(^inferno_zek_maxhit), calc($duration / 30));
+
+[ai_queue2,inferno_zek]
+~inferno_add_provoked;
+// The hunt is what sends it after whoever hit it; there is no active player in
+// a queued npc script to hand it directly.
+npc_sethuntmode(inferno_add);
+~npc_default_damage(last_int);
 
 [ai_opplayer2,inferno_zek] npc_setmode(applayer2);
 
@@ -81,19 +157,48 @@ if (%inferno_mejjak_angry ! 1) {
     return;
 }
 
+// Angry: it has turned its back on Zuk and bombards the ground behind it.
 huntall(npc_coord, npc_param(attackrange), ^vis_off);
 while (huntnext = true) {
     %npc_action_delay = add(map_clock, npc_param(attackrate));
-    npc_facesquare(coord);
+    // Kronos centres the barrage on the healer's own column dropped to the
+    // player's row — which, given the healers sit on the shelf north of the
+    // pit, is the ground directly behind one that has turned around. It does
+    // not track the player across the arena; it covers where they were.
+    def_coord $centre = movecoord(coord, sub(coordx(npc_coord), coordx(coord)), 0, 0);
+    npc_facesquare($centre);
     npc_anim(npc_param(attack_anim), 0);
-    // The lava lands on the tile the player is standing on right now — moving off
-    // it before the splash is what avoids the hit.
-    def_coord $splash = coord;
-    def_int $lava = ~coord_projectile(npc_coord, $splash, inferno_heal_proj, 0, 0, 0, 45, 75, 32, 0);
-    spotanim_map(inferno_lava_splash, $splash, 0, $lava);
-    ~inferno_hit_player($lava, ^crush_style, ^inferno_mejjak_maxhit);
+    ~inferno_mejjak_lava($centre);
+    ~inferno_mejjak_lava($centre);
+    ~inferno_mejjak_lava($centre);
     return;
 }
+
+/**
+ * One of the three splashes that make up a barrage. Kronos shuffles the square
+ * and takes three distinct tiles; three independent picks can collide, which
+ * costs the occasional splash and never adds one.
+ */
+[proc,inferno_mejjak_lava](coord $centre)
+def_coord $tile = movecoord(
+    $centre,
+    sub(random(add(multiply(^inferno_mejjak_lava_radius, 2), 1)), ^inferno_mejjak_lava_radius),
+    0,
+    sub(random(add(multiply(^inferno_mejjak_lava_radius, 2), 1)), ^inferno_mejjak_lava_radius));
+def_int $flight = ~coord_projectile(npc_coord, $tile, inferno_heal_proj, 0, 0, 0, 45, 75, 32, 0);
+spotanim_map(inferno_lava_splash, $tile, 0, $flight);
+queue*(inferno_mejjak_lava_hit, ^inferno_mejjak_lava_delay)($tile);
+
+/**
+ * The splash lands. It only catches a player still standing on that exact tile,
+ * and it ignores prayer and defence when it does — three tiles out of a
+ * seven-by-seven square, so moving at all is what takes nothing.
+ */
+[queue,inferno_mejjak_lava_hit](coord $tile)
+if (coord ! $tile) {
+    return;
+}
+queue(damage_player, 0, randominc(^inferno_mejjak_maxhit));
 
 // Being hit is the switch: from here on it fights instead of healing.
 [ai_queue2,inferno_mejjak]

@@ -70,10 +70,27 @@ roughly twenty ticks after `::~zuk`.
   otherwise an even split of the magic tri-projectile and the ranged ground
   graphic. Calls three Yt-HurKot to heal it at half health.
 - **Jal-MejJak** ×4 at 240 hitpoints: they heal Zuk from range until you hit
-  one, then answer with the lava attack.
+  one, then turn their backs on him and bombard the ground behind them.
 
-Both the waves and Jad target the *glyph*, not the player — that is why they
-have to be tagged off it rather than ignored.
+### Everything targets the glyph first
+
+The waves and Jad arrive shooting the **glyph**, not the player. That is what
+makes a wave urgent: 600 hitpoints of safespot are being chewed through while
+you decide what to do about it, and the fight is about tagging them off it
+rather than out-damaging them. Left alone, a Jal-Xil and a Jal-Zek take the
+glyph from full to nothing in about forty ticks.
+
+An add turns on the player when the player gives it a reason to — a hit lands
+through `ai_queue2`, which is where every player attack arrives. Until then it
+does not hunt at all, which is why neither wave add carries a `huntmode` in
+`inferno.npc`: being provoked is what hands it one. Killing the glyph releases
+them too, because there is nothing else in the arena to shoot.
+
+The Jal-MejJak barrage is aimed the same way. Kronos centres it on the healer's
+own column dropped to the player's row — the ground directly behind a healer
+that has turned around — scatters three tiles across the seven-by-seven square
+there, and hits only a player still standing on one of them three ticks later,
+ignoring prayer and defence. Moving at all is what takes nothing.
 
 ## Where the assets came from
 
@@ -198,6 +215,14 @@ reference takes.
 - **No sounds.** Sound 163 (Jad's hit) and the rest have no `.synth` equivalent.
 - **Jad's Yt-HurKot healers are scripted but were not exercised in testing** —
   reaching them needs Jad taken to half health in combat.
+- **The Jal-MejJak barrage was not exercised either.** It only starts once a
+  player has hit a healer, which the headless harness cannot stage; the aiming
+  and the three-tile scatter are transcribed from Kronos but unproven in play.
+- **Nothing rolls for accuracy.** Every attack in the encounter, against the
+  player or against the glyph, rolls damage straight out of its max hit. That
+  matches how the player-facing attacks were already written, but it makes the
+  adds strictly harsher on the glyph than Kronos, where they have to get past
+  its defence first.
 - **The fight stops while nobody is in the arena.** LostCity only ticks npcs in
   zones that hold a player, so logging out (or dying and respawning in Lumbridge)
   freezes the glyph mid-run and stops the wave timer. `::~zukhp` teleports you

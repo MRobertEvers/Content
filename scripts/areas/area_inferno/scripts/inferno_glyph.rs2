@@ -75,6 +75,12 @@ npc_setmode(none);
 [ai_applayer2,inferno_zuk_shield]
 npc_setmode(none);
 
+// The glyph is what the waves and Jad shoot at, so it has to be able to take a
+// scripted hit as well as a player's. Without this the adds fire at it forever
+// and the 600 hitpoints that make tagging them urgent never come off.
+[ai_queue2,inferno_zuk_shield]
+~npc_default_damage(last_int);
+
 [ai_queue3,inferno_zuk_shield]
 npc_anim(npc_param(death_anim), 0);
 gosub(npc_default_death);

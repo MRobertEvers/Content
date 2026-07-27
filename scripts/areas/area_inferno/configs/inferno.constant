@@ -107,6 +107,11 @@
 ^inferno_mejjak_heal_max = 25
 ^inferno_mejjak_heal_rate = 5
 ^inferno_hurkot_heal_rate = 4
+// Once a healer has been hit it stops healing and bombards the ground behind
+// it: three tiles picked out of the square this far around the strike point,
+// each landing this many ticks later. Kronos' area(3) is -3..+3 on both axes.
+^inferno_mejjak_lava_radius = 3
+^inferno_mejjak_lava_delay = 3
 
 // How long a spawned encounter npc lives before the engine reclaims it. Every
 // npc_add needs a positive duration, so this doubles as the safety net that
