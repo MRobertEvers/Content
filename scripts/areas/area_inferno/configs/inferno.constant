@@ -115,9 +115,10 @@
 ^inferno_mejjak_heal_max = 25
 ^inferno_mejjak_heal_rate = 3
 ^inferno_hurkot_heal_rate = 4
-// What a Yt-HurKot hits for once it stops healing and comes for you. 13 is the
-// figure the wiki gives them; they are the same npc as the Fight Caves ones.
-^inferno_hurkot_maxhit = 13
+// What a Yt-HurKot hits for once it stops healing and comes for you. The
+// Inferno's are level 141 and hit 18 — they are not the Fight Caves ones, which
+// is what the 13 here used to assume.
+^inferno_hurkot_maxhit = 18
 // Once a healer has been hit it stops healing and rains lava balls on the arena
 // in front of it. Always three of them, each for 5-10, each landing this many
 // ticks after it is fired.
