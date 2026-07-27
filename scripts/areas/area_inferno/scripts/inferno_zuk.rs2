@@ -16,6 +16,9 @@ if (p_finduid(uid) = false) {
 }
 ~inferno_despawn_all(^inferno_zuk_coord);
 p_teleport(^inferno_player_coord);
+// Stand the multiloc's default form up by hand. It is scenery rather than
+// encounter state — it just cannot travel through a cache that has no multiloc.
+loc_add(^inferno_cliff_coord, inferno_loc_30331, ^inferno_cliff_angle, centrepiece_straight, ^inferno_npc_duration);
 // Break the seal. Zuk comes out of the wall, so none of what was holding him
 // in is still standing once the fight is on. The glyph goes outright; the two
 // rocks are given a collapse first — each swaps to its "Falling rock" twin

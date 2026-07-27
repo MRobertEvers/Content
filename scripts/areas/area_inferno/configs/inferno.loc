@@ -48,6 +48,11 @@ active=no
 hillskew=yes
 sharelight=yes
 
+[inferno_loc_30331]
+name=Roof
+model=inferno_locmodel_33032
+active=yes
+
 [inferno_loc_6926]
 model=inferno_locmodel_6932
 model2=inferno_locmodel_15553
