@@ -16,15 +16,14 @@ if (p_finduid(uid) = false) {
 }
 ~inferno_despawn_all(^inferno_zuk_coord);
 p_teleport(^inferno_player_coord);
-// The base region carries the glyph as scenery as well as an npc; OSRS builds
-// the fight in an instance where only the npc exists. Left in place it draws a
-// second, motionless glyph on top of the moving one, and its collision sits
-// across the runway, so the npc reaches it and stops.
-if (loc_find(^inferno_glyph_loc_coord, inferno_loc_30338) = true) {
-    loc_del(^inferno_npc_duration);
-}
-// The glyph first, so Zuk's first tick already finds it.
-npc_add(^inferno_glyph_coord, inferno_zuk_shield, ^inferno_npc_duration);
+// Break the seal. Zuk comes out of the wall, so none of what was holding him
+// in is still standing once the fight is on.
+~inferno_break_seal(^inferno_glyph_loc_coord, inferno_loc_30338);
+~inferno_break_seal(^inferno_rock_coord_west, inferno_loc_30337);
+~inferno_break_seal(^inferno_rock_coord_east, inferno_loc_30336);
+// The glyph first, so Zuk's first tick already finds it. It goes in on the
+// seal row and drops to its own row over the opening ticks.
+npc_add(^inferno_glyph_spawn_coord, inferno_zuk_shield, ^inferno_npc_duration);
 npc_add(^inferno_zuk_coord, inferno_zuk, ^inferno_npc_duration);
 // npc_add leaves the npc it made active, so the opening damage can be queued
 // straight onto him. It goes through ai_queue2 so the phase checks see it as
@@ -33,6 +32,20 @@ if ($hp > 0 & $hp < npc_basestat(hitpoints)) {
     npc_queue(2, sub(npc_basestat(hitpoints), $hp), 1);
 }
 mes("TzKal-Zuk stirs.");
+
+/**
+ * Take one piece of the seal down. Idempotent, because a second ::~zuk finds
+ * the loc already gone and there is nothing left to remove.
+ *
+ * Kronos plays a collapse first — swap to a broken variant, animate 7561, then
+ * remove. Neither the broken locs (30343/30344) nor seq 7561 are in the export
+ * yet, so this goes straight to the end state; add them to the port_lostcity
+ * command in the README to get the animation as well.
+ */
+[proc,inferno_break_seal](coord $coord, loc $loc)
+if (loc_find($coord, $loc) = true) {
+    loc_del(^inferno_npc_duration);
+}
 
 // Remove every encounter npc around a coord. Used on entry, so a second ::zuk
 // does not stack a fight on top of the last one.
@@ -49,6 +62,20 @@ while (npc_findnext = true) {
 // ---- Zuk's cycle --------------------------------------------------------
 
 [ai_timer,inferno_zuk]
+// He arrives sealed. Kronos locks him for the opening cutscene and unlocks him
+// once the dialogue is done, so the first thing he does is haul himself out of
+// the wall — no timer, no waves, no shot until that has played out. The glyph
+// is dropping clear of the seal over the same ticks.
+if (%inferno_zuk_emerged ! 1) {
+    %inferno_zuk_emerged = 1;
+    %inferno_cooldown = add(map_clock, ^inferno_zuk_spawn_delay);
+    npc_anim(inferno_zuk_spawn, 0);
+    return;
+}
+if (%inferno_cooldown > map_clock) {
+    return;
+}
+
 // Everything that touches the glyph stays inside the branch where the lookup
 // succeeded — the script compiler tracks whether the secondary npc slot is
 // live, and a stored "did I find it" flag is not enough to convince it.
@@ -71,7 +98,7 @@ if (.npc_find(npc_coord, inferno_zuk_shield, ^inferno_scan_range, ^vis_off) = tr
 
     huntall(npc_coord, ^inferno_scan_range, ^vis_off);
     while (huntnext = true) {
-        %npc_action_delay = add(map_clock, ^inferno_zuk_attackrate);
+        %npc_action_delay = add(map_clock, ~inferno_zuk_attackrate);
         npc_anim(npc_param(attack_anim), 0);
         if (~inferno_zuk_safe($glyph_x, $glyph_dir, coordx(coord)) = true) {
             // Blocked: the shot goes to the glyph and the player takes nothing.
@@ -100,6 +127,18 @@ while (huntnext = true) {
     ~inferno_zuk_shoot;
     return;
 }
+
+/**
+ * Ticks between shots. Ten until the healer threshold, seven after it: Zuk
+ * enrages as he fights for his life, and the three ticks he gains are what
+ * close the two middle safespots — from there on the player has to stay level
+ * with the glyph instead of crossing behind it between shots.
+ */
+[proc,inferno_zuk_attackrate]()(int)
+if (npc_stat(hitpoints) <= ^inferno_healers_hp) {
+    return(^inferno_zuk_attackrate_enraged);
+}
+return(^inferno_zuk_attackrate);
 
 // The unblocked shot. Ignores prayer and defence — there is no roll to make.
 [proc,inferno_zuk_shoot]

@@ -20,20 +20,58 @@ fight, not a bug.
 | `::~zuk 470` | Same, but start Zuk at 470 hitpoints so the Jad phase fires at once |
 | `::~zukhp 470` | Teleport to a fight already running and set Zuk's health |
 
-## Fight shape
+## The encounter
 
-- **Zuk** never moves. Ten-tick cycle, no attack until the glyph has reached one
-  end of its run. Ignores prayer and defence.
-- **Ancestral Glyph** walks between x 2257 and x 2283 on z 5363, pausing four
-  ticks at each end. Killing it removes the safespot permanently.
+Sources: OSRS Wiki (TzKal-Zuk, Inferno), Kronos' `TzKalZuk.java` and
+`Inferno.java`, and Jupiter's player guide. Where they disagree, Kronos wins —
+it is what this port was written against.
+
+### The opening
+
+Zuk does not start the fight; he has to get out of the wall first. Three pieces
+of scenery seal him in: the **Ancestral Glyph** loc at (2270, 5363) and two
+rocks at (2268, 5364) and (2273, 5364). Kronos removes the glyph outright and
+collapses the rocks — swap to a broken variant, play seq 7561, remove four
+ticks later — behind a camera pan and a line of dialogue from TzHaar-Ket-Rak,
+with Zuk **locked** for the duration and unlocked ten ticks in.
+
+Over the same ticks the glyph npc, which spawns embedded in the seal at
+(2270, 5363), pauses three ticks and then force-walks two tiles south onto its
+running row, z 5361.
+
+Nothing is on the clock until Zuk is out. He then still holds fire until the
+glyph has completed its first run to one end, so the earliest possible shot is
+roughly twenty ticks after `::~zuk`.
+
+### The steady state
+
+- **Zuk** — 1200 hitpoints, never moves. Fires every **10 ticks** and cannot
+  miss: the shot ignores prayer and defence and can kill from full. The glyph
+  is the only defence there is.
+- **Enrage** — at **240 hitpoints** he fires every **7 ticks** instead. This is
+  the same threshold that spawns his healers, and the speed-up is what closes
+  the two middle safespots: there is no longer time to cross behind the glyph
+  between shots, so the player has to stay level with it.
+- **Ancestral Glyph** — 600 hitpoints, three by three. Slides one tile a tick
+  between x 2257 and x 2283 on z 5361, pausing four ticks at each end. It
+  neither turns nor fights back. A shot is nullified while the player is inside
+  its band; killing it removes the safespot permanently.
+- **The band** is the glyph's own three tiles widened by where it is heading —
+  a moving glyph covers more ground behind it than in front, and one parked at
+  an end covers one extra tile on its outward side. Offsets are Kronos'
+  `isTargetSafe()`.
 - **Add waves** — a Jal-Xil and a Jal-Zek — 60 ticks after the glyph is ready,
   then no sooner than every 350 ticks; Jad's arrival pushes that out by 175.
-  Suspended while Zuk sits between 479 and 599 hitpoints.
+  Suspended while Zuk sits between 479 and 599 hitpoints, which is the pause
+  players farm by leaving the mager alive to buy time for Jad.
 - **JalTok-Jad** at 480 hitpoints: nine-tick cycle, melee when adjacent,
   otherwise an even split of the magic tri-projectile and the ranged ground
   graphic. Calls three Yt-HurKot to heal it at half health.
 - **Jal-MejJak** ×4 at 240 hitpoints: they heal Zuk from range until you hit
   one, then answer with the lava attack.
+
+Both the waves and Jad target the *glyph*, not the player — that is why they
+have to be tagged off it rather than ignored.
 
 ## Where the assets came from
 
@@ -129,7 +167,16 @@ reference takes.
 ## Known gaps
 
 - **Zuk's footprint is 5, not 7.** LostCity caps npc `size` at 5. His model
-  renders at full size; only the tiles he occupies are smaller.
+  renders at full size; only the tiles he occupies are smaller. A model is
+  drawn *centred on its footprint*, so his coord is not Kronos' — it is Kronos'
+  (2268, 5364) shifted a tile north-east, which is what puts the centre of a
+  five-tile footprint where the centre of a seven-tile one would have been.
+  Anything else leaves him visibly off to one side of his alcove.
+- **The seal collapse is not animated.** The encounter removes the glyph and
+  the two rocks outright; Kronos first swaps them to broken variants (locs
+  30343/30344) and plays seq 7561. `loc_change` and `loc_anim` both exist, so
+  the only thing missing is the assets — add `--loc 30343 --loc 30344` and
+  `--seq 7561` to the export command above and the collapse can be scripted.
 - **The arena is untextured, and so is the source.** Not a porting gap: the
   exporter carries materials across now, but there is nothing here to carry.
   Every one of the seven npc models decodes with no face-texture section at

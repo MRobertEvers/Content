@@ -10,6 +10,10 @@
 // Zuk has not attacked yet — he waits for the glyph to reach an end first.
 [inferno_zuk_ready]
 
+// Set on the tick Zuk breaks out of the seal, so the spawn animation plays
+// once and the opening delay is armed once.
+[inferno_zuk_emerged]
+
 // Ticks since the last add wave, and how long the current gap is.
 [inferno_wave_timer]
 [inferno_wave_time]

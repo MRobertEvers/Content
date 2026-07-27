@@ -2,27 +2,48 @@
 // world z = 5312 + local z; the Kronos coordinates carry over unchanged.
 
 // Zuk stands still at the north end of the arena, facing south.
-^inferno_zuk_coord = 0_35_83_28_52
-// The Ancestral Glyph slides along the lava shelf in front of him. Kronos'
-// westShieldPoint/eastShieldPoint are (2257, 5361) and (2283, 5361).
+//
+// Kronos spawns him at (2268, 5364) — local 28_52 — but he is seven by seven
+// there and LostCity caps npc size at five. A model is drawn centred on its
+// footprint, so the same coord with a five-tile footprint renders him a tile
+// west and a tile south of where he belongs, visibly off-centre in his alcove.
+// Moving the coord one tile in each direction puts the centre back:
+// 2269*128 + 5*64 is exactly 2268*128 + 7*64.
+^inferno_zuk_coord = 0_35_83_29_53
+
+// The Ancestral Glyph. It spawns embedded in the seal in front of Zuk and
+// drops two tiles clear of it as he breaks out, then slides along the lava
+// shelf. Kronos spawns the shield at (2270, 5363) and force-walks it south
+// twice during the opening; its westShieldPoint/eastShieldPoint are
+// (2257, 5361) and (2283, 5361).
 //
 // A coord is an npc's SOUTH-WEST tile and the glyph is three by three, so
 // 5361 is the *south* row of its footprint, not the row it looks like it sits
-// on. Placing it two rows further north (5363, the row a glance at the arena
-// suggests) puts its own footprint inside the pillars along Zuk's row, and it
-// cannot take a single step in either direction.
-^inferno_glyph_coord = 0_35_83_30_49
+// on. Left on the spawn row it has its own footprint inside the pillars along
+// Zuk's row and cannot take a single step in either direction.
+^inferno_glyph_spawn_coord = 0_35_83_30_51
+^inferno_glyph_run_coord = 0_35_83_30_49
 ^inferno_glyph_west = 0_35_83_17_49
 ^inferno_glyph_east = 0_35_83_43_49
 ^inferno_glyph_west_x = 2257
 ^inferno_glyph_east_x = 2283
 ^inferno_glyph_row_z = 5361
+// Ticks the glyph sits in the seal before dropping to its row.
+^inferno_glyph_drop_delay = 3
 
-// The static "Ancestral Glyph" scenery — the base region's copy of the thing
-// the npc represents. The instance replaces it, so the encounter removes it:
-// it renders a second motionless glyph over the moving one, and its collision
-// is the one obstruction on the glyph's runway.
+// The seal. Three pieces of scenery hold Zuk in the wall, and the opening of
+// the fight is him breaking out of all of them — Kronos removes the glyph
+// outright and collapses the two rocks (swap to a broken variant, play seq
+// 7561, remove four ticks later) before handing over to the encounter.
+//
+// The glyph loc is the base region's copy of the npc we spawn: left in place
+// it draws a second, motionless glyph on top of the moving one, and its
+// collision is the one obstruction on the glyph's runway. The two rocks flank
+// Zuk in his alcove and are non-blocking, so they are purely something to look
+// at that should not still be there once he is out.
 ^inferno_glyph_loc_coord = 0_35_83_30_51
+^inferno_rock_coord_west = 0_35_83_28_52
+^inferno_rock_coord_east = 0_35_83_33_52
 
 // Where ::~zuk drops the player in: close enough that Zuk and the glyph are both
 // on screen, and lined up behind the glyph's starting column so the first shot
@@ -39,8 +60,16 @@
 ^inferno_healer_coord4 = 0_35_83_22_51
 
 // Zuk fires every 10 ticks and cannot miss; the glyph is the only defence.
+// At the healer threshold he enrages and fires three ticks faster — that is
+// what takes the two middle safespots away from the player, because there is
+// no longer time to cross the arena between shots.
 ^inferno_zuk_maxhit = 251
 ^inferno_zuk_attackrate = 10
+^inferno_zuk_attackrate_enraged = 7
+// He claws his way out of the seal before any of it starts. Kronos locks him
+// for the opening cutscene and unlocks him after the dialogue, ten ticks in;
+// nothing he does is on the clock until then.
+^inferno_zuk_spawn_delay = 10
 // The glyph waits this many ticks at each end before turning around.
 ^inferno_glyph_pause = 4
 
