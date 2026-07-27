@@ -90,9 +90,16 @@
 ^inferno_wave_first = 60
 ^inferno_wave_interval = 350
 ^inferno_wave_jad_delay = 175
-// Wave spawning is suspended while Zuk sits in this HP band.
-^inferno_wave_pause_low = 479
-^inferno_wave_pause_high = 599
+// Wave spawning holds from the tick Zuk first drops under the first of these
+// until he first drops under the second — the window the fight gives you to
+// spawn Jad and kill it. It is a one-way latch, not a band: his healers push
+// him back up through it later and must not stop the waves a second time.
+^inferno_wave_pause_hp = 600
+^inferno_wave_resume_hp = 480
+// %inferno_wave_gate, tracking which side of that window the fight is on.
+^inferno_wave_gate_before = 0
+^inferno_wave_gate_paused = 1
+^inferno_wave_gate_resumed = 2
 
 // Damage-triggered phases.
 ^inferno_jad_hp = 480
@@ -112,6 +119,19 @@
 // each landing this many ticks later. Kronos' area(3) is -3..+3 on both axes.
 ^inferno_mejjak_lava_radius = 3
 ^inferno_mejjak_lava_delay = 3
+
+// Jad's own healers are Yt-HurKot, not the Jal-MejJak that heal Zuk. Kronos
+// spawns wave 69's set in the three-by-three square centred five tiles north of
+// Jad's centre; Jad is five wide, so its centre is two tiles in from its coord.
+^inferno_jad_healer_dx = 2
+^inferno_jad_healer_dz = 7
+
+// Where ::~tagheal stands the player: the healers sit on the shelf at z 5363
+// and only reach six tiles, so the arena entry point is well outside their
+// range and nothing would happen there. This is the north lip of the pit, in
+// range of the two middle ones — the same place a player gets bombarded from
+// in a real fight.
+^inferno_healer_watch_coord = 0_35_83_31_45
 
 // How long a spawned encounter npc lives before the engine reclaims it. Every
 // npc_add needs a positive duration, so this doubles as the safety net that

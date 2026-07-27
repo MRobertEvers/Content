@@ -30,7 +30,11 @@ if (%inferno_add_angry ! 1) {
 }
 huntall(npc_coord, ^inferno_scan_range, ^vis_off);
 while (huntnext = true) {
-    if (npc_range(coord) > npc_param(attackrange)) {
+    // npc_attackrange reads the config field; the param of the same name is a
+    // different thing that nothing here sets, and reading it gave 0, so this
+    // was "further away than zero tiles" — always true, and Jad walked at the
+    // player forever instead of ever attacking.
+    if (npc_range(coord) > npc_attackrange) {
         // Out of range: walk toward the player instead of attacking.
         if (%inferno_cooldown <= map_clock) {
             %inferno_cooldown = add(map_clock, 2);
@@ -99,14 +103,31 @@ def_int $damage = last_int;
 // Decided before the damage lands, for the same reason as Zuk's: the default
 // damage proc can return out of the whole trigger.
 def_int $after = max(sub(npc_stat(hitpoints), $damage), 0);
+// Latched, so healing Jad back over half does not buy a second set.
 if ($after > 0 & %inferno_jad_healers_spawned ! 1 &
-    $after <= divide(npc_basestat(hitpoints), 2)) {
+    $after < divide(npc_basestat(hitpoints), 2)) {
     %inferno_jad_healers_spawned = 1;
-    .npc_add(movecoord(npc_coord, 2, 0, 6), inferno_hurkot, ^inferno_npc_duration);
-    .npc_add(movecoord(npc_coord, 4, 0, 6), inferno_hurkot, ^inferno_npc_duration);
-    .npc_add(movecoord(npc_coord, 0, 0, 6), inferno_hurkot, ^inferno_npc_duration);
+    ~inferno_jad_spawn_healer;
+    ~inferno_jad_spawn_healer;
+    ~inferno_jad_spawn_healer;
 }
 ~npc_default_damage($damage);
+
+/**
+ * One Yt-HurKot. Three of these, and only three — Kronos hands out five only on
+ * wave 67, and Zuk is wave 69.
+ *
+ * Wave 69 "always spawns healers to the north": the spawn area is the three by
+ * three square centred five tiles north of Jad's own centre, and each healer is
+ * drawn from it independently, so two can land on the same tile. They walk to
+ * Jad from wherever they appear, which is what the Yt-HurKot timer does.
+ */
+[proc,inferno_jad_spawn_healer]
+def_coord $centre = movecoord(npc_coord, ^inferno_jad_healer_dx, 0, ^inferno_jad_healer_dz);
+.npc_add(
+    movecoord($centre, sub(random(3), 1), 0, sub(random(3), 1)),
+    inferno_hurkot,
+    ^inferno_npc_duration);
 
 // Heals arrive as a queued amount rather than a direct write, because there is no
 // secondary-slot npc_statheal — a healer can only ask its target to heal itself.

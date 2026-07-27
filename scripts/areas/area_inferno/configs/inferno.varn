@@ -18,6 +18,10 @@
 [inferno_wave_timer]
 [inferno_wave_time]
 
+// Which side of the no-waves window the fight is on: ^inferno_wave_gate_before,
+// _paused or _resumed. One-way, so the window happens exactly once.
+[inferno_wave_gate]
+
 // Set once each phase has fired, so a phase never spawns twice.
 [inferno_jad_spawned]
 [inferno_healers_spawned]

@@ -19,6 +19,8 @@ fight, not a bug.
 | `::~zuk` | Teleport in, spawn Zuk and the glyph at full health |
 | `::~zuk 470` | Same, but start Zuk at 470 hitpoints so the Jad phase fires at once |
 | `::~zukhp 470` | Teleport to a fight already running and set Zuk's health |
+| `::~jadhp 170` | Drive JalTok-Jad to a health, to reach its Yt-HurKot without fighting it down. Run it twice to check they only ever spawn once |
+| `::~tagheal` | Hit every Jal-MejJak for one point and stand you where they can reach you. The only way to see the barrage without swinging at one by hand |
 | `::maxrange` | Max every stat, wear the black d'hide setup with 100k rune arrows, complete all quests. Lives in `scripts/_test/scripts/cheats/cheat_maxrange.rs2`; it ends by asking which side you took in Shield of Arrav and Temple of Ikov |
 
 ## The encounter
@@ -64,11 +66,17 @@ roughly twenty ticks after `::~zuk`.
   `isTargetSafe()`.
 - **Add waves** — a Jal-Xil and a Jal-Zek — 60 ticks after the glyph is ready,
   then no sooner than every 350 ticks; Jad's arrival pushes that out by 175.
-  Suspended while Zuk sits between 479 and 599 hitpoints, which is the pause
-  players farm by leaving the mager alive to buy time for Jad.
+  The timer holds from the tick Zuk first drops under 600 until he first drops
+  under 480 — the window players farm by leaving the mager alive to buy time for
+  Jad. That is a one-way latch rather than a band check, because his healers
+  push him back up through it later and must not stop the waves twice.
 - **JalTok-Jad** at 480 hitpoints: nine-tick cycle, melee when adjacent,
   otherwise an even split of the magic tri-projectile and the ranged ground
-  graphic. Calls three Yt-HurKot to heal it at half health.
+  graphic. Under half health it calls **three** Yt-HurKot — five is wave 67, and
+  Zuk is wave 69 — each placed at random in the three-by-three square five tiles
+  north of Jad's centre, which is where Kronos always puts wave 69's. Latched:
+  healing back over half does not buy a second set. These are Jad's healers and
+  have nothing to do with the Jal-MejJak that heal Zuk.
 - **Jal-MejJak** ×4 at 240 hitpoints: they heal Zuk from range until you hit
   one, then turn their backs on him and bombard the ground behind them.
 
@@ -215,9 +223,13 @@ reference takes.
 - **No sounds.** Sound 163 (Jad's hit) and the rest have no `.synth` equivalent.
 - **Jad's Yt-HurKot healers are scripted but were not exercised in testing** —
   reaching them needs Jad taken to half health in combat.
-- **The Jal-MejJak barrage was not exercised either.** It only starts once a
-  player has hit a healer, which the headless harness cannot stage; the aiming
-  and the three-tile scatter are transcribed from Kronos but unproven in play.
+- **`attackrange` is a config field, not a param.** Both readings compile and
+  the param of the same name exists with a default of 0, so `npc_param` for it
+  silently returns zero. That is why the Jal-MejJak barrage never fired — a hunt
+  of radius zero finds nobody — and why Jad walked at the player forever instead
+  of attacking, "further away than zero tiles" being always true. Read it with
+  `npc_attackrange`. Nothing else in the content uses either form, so there was
+  no local precedent to copy.
 - **Nothing rolls for accuracy.** Every attack in the encounter, against the
   player or against the glyph, rolls damage straight out of its max hit. That
   matches how the player-facing attacks were already written, but it makes the

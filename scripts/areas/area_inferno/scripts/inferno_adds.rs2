@@ -158,7 +158,11 @@ if (%inferno_mejjak_angry ! 1) {
 }
 
 // Angry: it has turned its back on Zuk and bombards the ground behind it.
-huntall(npc_coord, npc_param(attackrange), ^vis_off);
+// npc_attackrange, not npc_param(attackrange): `attackrange` is a config field
+// on the npc, and the identically-named param is a different thing that nothing
+// here sets, so reading it gave 0 — a hunt of radius zero that found nobody and
+// left the barrage permanently silent.
+huntall(npc_coord, npc_attackrange, ^vis_off);
 while (huntnext = true) {
     %npc_action_delay = add(map_clock, npc_param(attackrate));
     // Kronos centres the barrage on the healer's own column dropped to the
