@@ -31,10 +31,11 @@ it is what this port was written against.
 
 Zuk does not start the fight; he has to get out of the wall first. Three pieces
 of scenery seal him in: the **Ancestral Glyph** loc at (2270, 5363) and two
-rocks at (2268, 5364) and (2273, 5364). Kronos removes the glyph outright and
-collapses the rocks — swap to a broken variant, play seq 7561, remove four
-ticks later — behind a camera pan and a line of dialogue from TzHaar-Ket-Rak,
-with Zuk **locked** for the duration and unlocked ten ticks in.
+rocks at (2268, 5364) and (2273, 5364). The glyph is removed outright; each
+rock swaps to its "Falling rock" twin, plays the collapse two ticks later and
+is cleared two ticks after that, as the animation ends. All of it happens
+behind a camera pan and a line of dialogue from TzHaar-Ket-Rak in Kronos, with
+Zuk **locked** for the duration and unlocked ten ticks in.
 
 Over the same ticks the glyph npc, which spawns embedded in the seal at
 (2270, 5363), pauses three ticks and then force-walks two tiles south onto its
@@ -96,6 +97,8 @@ make -C 3rd/rscache/tools port_lostcity
   --seq 2639=inferno_hurkot_heal \
   --seq 7604=inferno_xil_melee --seq 7605=inferno_xil_range --seq 7606=inferno_xil_death --seq 7607=inferno_xil_defend \
   --seq 7610=inferno_zek_magic --seq 7612=inferno_zek_melee --seq 7613=inferno_zek_death \
+  --seq 7561=inferno_seal_collapse \
+  --loc 30343 --loc 30344 \
   --spotanim 1375=inferno_zuk_proj --spotanim 1376=inferno_zek_proj --spotanim 1377=inferno_xil_proj \
   --spotanim 660=inferno_heal_proj --spotanim 659=inferno_lava_splash \
   --spotanim 447=inferno_jad_magic_gfx --spotanim 448=inferno_jad_proj1 --spotanim 449=inferno_jad_proj2 --spotanim 450=inferno_jad_proj3 \
@@ -105,7 +108,16 @@ make -C 3rd/rscache/tools port_lostcity
 
 It writes `configs/inferno.{npc,seq,spotanim,loc,flo}`, the models and animsets
 under `content/models/inferno/`, `content/maps/m35_83.jm2`, and the id lines in
-`content/pack/*.pack`. It is idempotent: names already registered keep their ids.
+`content/pack/*.pack`. It is idempotent: names already registered keep their ids,
+and re-running the command above reproduces every file byte for byte.
+
+**Always run the whole command.** Each config is rewritten from the assets that
+run asked for, not merged into — so exporting one extra loc on its own empties
+`inferno.loc` of the sixty-odd the map pulls in, and the same for `inferno.seq`.
+The damage is quiet: the build still succeeds under `BUILD_VERIFY=false` and
+only the server's own startup refuses it, with a stray
+`inferno_loc_6926 was not found in any .loc files`. To add an asset, add its
+flag to the command above and run all of it.
 
 **`inferno.npc` is half generated and half hand-authored.** The exporter writes
 the asset lines (name, models, size, animations, vislevel, resize, ambient,
@@ -173,11 +185,10 @@ reference takes.
   (2268, 5364) shifted a tile north-east, which is what puts the centre of a
   five-tile footprint where the centre of a seven-tile one would have been.
   Anything else leaves him visibly off to one side of his alcove.
-- **The seal collapse is not animated.** The encounter removes the glyph and
-  the two rocks outright; Kronos first swaps them to broken variants (locs
-  30343/30344) and plays seq 7561. `loc_change` and `loc_anim` both exist, so
-  the only thing missing is the assets — add `--loc 30343 --loc 30344` and
-  `--seq 7561` to the export command above and the collapse can be scripted.
+- **The opening has no camera work or dialogue.** Kronos fades out, pans the
+  camera onto Zuk, shakes it, and has TzHaar-Ket-Rak speak a line while he
+  breaks out. The port keeps the timing — Zuk is inert for the same ten ticks —
+  but the player just watches it happen from where they are standing.
 - **The arena is untextured, and so is the source.** Not a porting gap: the
   exporter carries materials across now, but there is nothing here to carry.
   Every one of the seven npc models decodes with no face-texture section at

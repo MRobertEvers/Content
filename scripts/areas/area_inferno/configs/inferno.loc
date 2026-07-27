@@ -1,3 +1,25 @@
+[inferno_loc_30343]
+name=Falling rock
+model=inferno_locmodel_33039
+width=5
+length=2
+blockwalk=no
+blockrange=no
+active=yes
+hillskew=yes
+sharelight=yes
+
+[inferno_loc_30344]
+name=Falling rock
+model=inferno_locmodel_33035
+width=5
+length=2
+blockwalk=no
+blockrange=no
+active=yes
+hillskew=yes
+sharelight=yes
+
 [inferno_loc_6926]
 model=inferno_locmodel_6932
 model2=inferno_locmodel_15553

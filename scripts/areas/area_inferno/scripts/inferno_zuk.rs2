@@ -17,10 +17,15 @@ if (p_finduid(uid) = false) {
 ~inferno_despawn_all(^inferno_zuk_coord);
 p_teleport(^inferno_player_coord);
 // Break the seal. Zuk comes out of the wall, so none of what was holding him
-// in is still standing once the fight is on.
+// in is still standing once the fight is on. The glyph goes outright; the two
+// rocks are given a collapse first — each swaps to its "Falling rock" twin
+// here and is animated and cleared from the queue below.
 ~inferno_break_seal(^inferno_glyph_loc_coord, inferno_loc_30338);
-~inferno_break_seal(^inferno_rock_coord_west, inferno_loc_30337);
-~inferno_break_seal(^inferno_rock_coord_east, inferno_loc_30336);
+~inferno_collapse_rock(^inferno_rock_coord_west, inferno_loc_30337, inferno_loc_30344);
+~inferno_collapse_rock(^inferno_rock_coord_east, inferno_loc_30336, inferno_loc_30343);
+// Queued unconditionally, so a run that was interrupted mid-collapse still has
+// its leftover falling rocks cleared by the next ::~zuk.
+queue(inferno_seal_anim, ^inferno_seal_anim_delay, 0);
 // The glyph first, so Zuk's first tick already finds it. It goes in on the
 // seal row and drops to its own row over the opening ticks.
 npc_add(^inferno_glyph_spawn_coord, inferno_zuk_shield, ^inferno_npc_duration);
@@ -36,15 +41,35 @@ mes("TzKal-Zuk stirs.");
 /**
  * Take one piece of the seal down. Idempotent, because a second ::~zuk finds
  * the loc already gone and there is nothing left to remove.
- *
- * Kronos plays a collapse first — swap to a broken variant, animate 7561, then
- * remove. Neither the broken locs (30343/30344) nor seq 7561 are in the export
- * yet, so this goes straight to the end state; add them to the port_lostcity
- * command in the README to get the animation as well.
  */
 [proc,inferno_break_seal](coord $coord, loc $loc)
 if (loc_find($coord, $loc) = true) {
     loc_del(^inferno_npc_duration);
+}
+
+/**
+ * Start a rock collapsing: swap the standing loc for its "Falling rock" twin.
+ * The change lasts the whole encounter, but the rock is cleared long before
+ * that — the duration is only there so it cannot revert mid-fight.
+ */
+[proc,inferno_collapse_rock](coord $coord, loc $standing, loc $falling)
+if (loc_find($coord, $standing) = true) {
+    loc_change($falling, ^inferno_npc_duration);
+}
+
+// The rocks let go, and are cleared as the animation finishes.
+[queue,inferno_seal_anim]
+~inferno_anim_rock(^inferno_rock_coord_west, inferno_loc_30344);
+~inferno_anim_rock(^inferno_rock_coord_east, inferno_loc_30343);
+queue(inferno_seal_clear, ^inferno_seal_clear_delay, 0);
+
+[queue,inferno_seal_clear]
+~inferno_break_seal(^inferno_rock_coord_west, inferno_loc_30344);
+~inferno_break_seal(^inferno_rock_coord_east, inferno_loc_30343);
+
+[proc,inferno_anim_rock](coord $coord, loc $loc)
+if (loc_find($coord, $loc) = true) {
+    loc_anim(inferno_seal_collapse);
 }
 
 // Remove every encounter npc around a coord. Used on entry, so a second ::zuk
