@@ -1,0 +1,61 @@
+// A ranger, ready to go. Written for testing TzKal-Zuk, where the whole fight
+// is "shoot the boss from behind a moving shield" and getting there by hand
+// means a max cape's worth of grinding first.
+//
+// It maxes every stat, dresses the player in the black d'hide setup, hands
+// over enough rune arrows to never think about ammunition, and finishes by
+// completing every quest.
+//
+// The worn slots it fills are overwritten, not swapped — whatever was in them
+// is gone. It is a cheat; bank anything that matters first.
+
+[debugproc,maxrange]
+if_close;
+if (p_finduid(uid) = false) {
+    @please_finish;
+    return;
+}
+
+// Same max as ::maxme. Ranged is the one that matters here, but a half-levelled
+// player dies to things that are not the boss, so all of it goes up.
+def_int $max_xp = 130344310;
+stat_advance(attack, $max_xp);
+stat_advance(defence, $max_xp);
+stat_advance(strength, $max_xp);
+stat_advance(hitpoints, $max_xp);
+stat_advance(ranged, $max_xp);
+stat_advance(prayer, $max_xp);
+stat_advance(magic, $max_xp);
+stat_advance(cooking, $max_xp);
+stat_advance(woodcutting, $max_xp);
+stat_advance(fletching, $max_xp);
+stat_advance(fishing, $max_xp);
+stat_advance(firemaking, $max_xp);
+stat_advance(crafting, $max_xp);
+stat_advance(smithing, $max_xp);
+stat_advance(mining, $max_xp);
+stat_advance(herblore, $max_xp);
+stat_advance(agility, $max_xp);
+stat_advance(thieving, $max_xp);
+stat_advance(runecraft, $max_xp);
+
+// The loadout. Arrows go in the quiver rather than the pack so the bow is
+// usable the moment the command returns.
+inv_setslot(worn, ^wearpos_hat, coif, 1);
+inv_setslot(worn, ^wearpos_front, amulet_of_glory, 1);
+inv_setslot(worn, ^wearpos_rhand, magic_shortbow, 1);
+inv_setslot(worn, ^wearpos_torso, black_dragonhide_body, 1);
+inv_setslot(worn, ^wearpos_legs, black_dragonhide_chaps, 1);
+inv_setslot(worn, ^wearpos_hands, black_dragon_vambraces, 1);
+inv_setslot(worn, ^wearpos_quiver, rune_arrow, 100000);
+~update_all(null);
+
+// The longbow rides along unequipped — it out-ranges the shortbow and is worth
+// having when the shield puts distance between you and what you are shooting.
+inv_add(inv, magic_longbow, 1);
+
+mes("Maxed, kitted out and armed with 100,000 rune arrows.");
+
+// Last, because this jumps rather than calls: it asks which side you took in
+// Shield of Arrav and Temple of Ikov, and nothing after it would run.
+@complete_all_quests;

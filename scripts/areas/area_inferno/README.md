@@ -19,6 +19,7 @@ fight, not a bug.
 | `::~zuk` | Teleport in, spawn Zuk and the glyph at full health |
 | `::~zuk 470` | Same, but start Zuk at 470 hitpoints so the Jad phase fires at once |
 | `::~zukhp 470` | Teleport to a fight already running and set Zuk's health |
+| `::maxrange` | Max every stat, wear the black d'hide setup with 100k rune arrows, complete all quests. Lives in `scripts/_test/scripts/cheats/cheat_maxrange.rs2`; it ends by asking which side you took in Shield of Arrav and Temple of Ikov |
 
 ## The encounter
 
