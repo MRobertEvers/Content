@@ -38,12 +38,18 @@
 // opposite corners of the footprint, and an npc-to-npc projectile always
 // departs from npc_coord, so both halves would be drawn on top of each other.
 [ai_timer,inferno_xil]
-if (%npc_action_delay > map_clock | %inferno_add_angry = 1) {
+if (%inferno_add_angry = 1) {
     return;
 }
+// Checked ahead of the attack cooldown, so the tick the glyph dies is the tick
+// it turns: waiting for the cooldown would leave it staring at nothing for up
+// to a full attack.
 if (.npc_find(npc_coord, inferno_zuk_shield, ^inferno_scan_range, ^vis_off) = false) {
     ~inferno_add_provoked;
     npc_sethuntmode(inferno_add);
+    return;
+}
+if (%npc_action_delay > map_clock) {
     return;
 }
 %npc_action_delay = add(map_clock, npc_param(attackrate));
@@ -89,12 +95,18 @@ def_int $twin = ~player_projectile(movecoord(npc_coord, 2, 0, 1), coord, uid, in
 // ---- Jal-Zek, the mager -------------------------------------------------
 
 [ai_timer,inferno_zek]
-if (%npc_action_delay > map_clock | %inferno_add_angry = 1) {
+if (%inferno_add_angry = 1) {
     return;
 }
+// Checked ahead of the attack cooldown, so the tick the glyph dies is the tick
+// it turns: waiting for the cooldown would leave it staring at nothing for up
+// to a full attack.
 if (.npc_find(npc_coord, inferno_zuk_shield, ^inferno_scan_range, ^vis_off) = false) {
     ~inferno_add_provoked;
     npc_sethuntmode(inferno_add);
+    return;
+}
+if (%npc_action_delay > map_clock) {
     return;
 }
 %npc_action_delay = add(map_clock, npc_param(attackrate));

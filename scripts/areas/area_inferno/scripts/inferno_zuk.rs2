@@ -382,7 +382,12 @@ while (npc_findnext = true) {
         return;
     }
 }
-mes("No JalTok-Jad nearby.");
+// Self-contained, like ::~tagheal: no Jad means put one in and damage that, so
+// the healer phase is one command away rather than three. Nothing else in the
+// arena is needed — Jad finds the player on its own.
+mes("No JalTok-Jad nearby; spawning one.");
+npc_add(^inferno_jad_coord, inferno_jad, ^inferno_npc_duration);
+npc_queue(2, sub(npc_stat(hitpoints), max($hp, 0)), 1);
 
 //! Poke every healer in the arena — Zuk's Jal-MejJak and Jad's Yt-HurKot — for
 //! a single point of damage, which is all it takes to turn one. Both kinds heal
@@ -407,6 +412,12 @@ while (npc_findnext = true) {
     }
 }
 if ($present = 0) {
+    // Zuk first, and he is not optional: a healer with nothing to heal deletes
+    // itself on its very first tick, and ai_timer runs ahead of ai_queue, so
+    // healers spawned on their own are gone before the tag below can land.
+    // Without a glyph he never becomes ready, so he stands there inert and the
+    // test is only ever about the healers.
+    npc_add(^inferno_zuk_coord, inferno_zuk, ^inferno_npc_duration);
     npc_add(^inferno_healer_coord1, inferno_mejjak, ^inferno_npc_duration);
     npc_add(^inferno_healer_coord2, inferno_mejjak, ^inferno_npc_duration);
     npc_add(^inferno_healer_coord3, inferno_mejjak, ^inferno_npc_duration);

@@ -5,6 +5,12 @@
 // ground graphic. At half health it calls in three Yt-HurKot to heal it.
 
 [ai_timer,inferno_jad]
+// The glyph check comes ahead of the attack cooldown, so the tick it dies is
+// the tick Jad turns on the player rather than up to nine ticks later.
+if (%inferno_add_angry ! 1 &
+    .npc_find(npc_coord, inferno_zuk_shield, ^inferno_scan_range, ^vis_off) = false) {
+    ~inferno_add_provoked;
+}
 if (%npc_action_delay > map_clock) {
     return;
 }
@@ -147,8 +153,16 @@ while (.npc_findnext = true) {
 }
 gosub(npc_default_death);
 
-// Jad is gone and his death has played out.
+// Jad's death has played out — but he is not gone the instant it finishes. The
+// stock death path walks him, waits for him to arrive, plays the animation and
+// only then removes him, and how long that adds is not ours to know. So poll
+// rather than trust a count: the healers stand there until he has actually
+// left, and go on the tick after.
 [ai_queue5,inferno_hurkot]
+if (.npc_find(npc_coord, inferno_jad, ^inferno_scan_range, ^vis_off) = true) {
+    npc_queue(5, 0, 1);
+    return;
+}
 npc_del;
 
 // ---- Yt-HurKot ----------------------------------------------------------
