@@ -62,7 +62,9 @@
 // Zuk fires every 10 ticks and cannot miss; the glyph is the only defence.
 // At the healer threshold he enrages and fires three ticks faster — that is
 // what takes the two middle safespots away from the player, because there is
-// no longer time to cross the arena between shots.
+// no longer time to cross the arena between shots. The enrage latches: the
+// healers that arrive at the same threshold spend the rest of the fight
+// pushing him back above it and he does not calm down when they do.
 ^inferno_zuk_maxhit = 251
 ^inferno_zuk_attackrate = 10
 ^inferno_zuk_attackrate_enraged = 7

@@ -22,6 +22,11 @@
 [inferno_jad_spawned]
 [inferno_healers_spawned]
 
+// Latched the first time Zuk is seen at or below the healer threshold. It
+// never lifts: the Jal-MejJak heal him back above it and he does not calm
+// down when they do.
+[inferno_zuk_enraged]
+
 // Glyph movement: ^inferno_dir_west / ^inferno_dir_east, and the tick count it
 // has been parked at an end.
 [inferno_glyph_dir]

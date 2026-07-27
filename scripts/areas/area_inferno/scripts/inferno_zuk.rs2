@@ -133,9 +133,17 @@ while (huntnext = true) {
  * enrages as he fights for his life, and the three ticks he gains are what
  * close the two middle safespots — from there on the player has to stay level
  * with the glyph instead of crossing behind it between shots.
+ *
+ * It is a latch, not a comparison. The Jal-MejJak that arrive at the same
+ * threshold spend the rest of the fight healing him back above it, and reading
+ * his health live would have him lapse in and out of the enrage every time
+ * they landed one.
  */
 [proc,inferno_zuk_attackrate]()(int)
 if (npc_stat(hitpoints) <= ^inferno_healers_hp) {
+    %inferno_zuk_enraged = 1;
+}
+if (%inferno_zuk_enraged = 1) {
     return(^inferno_zuk_attackrate_enraged);
 }
 return(^inferno_zuk_attackrate);
@@ -208,6 +216,11 @@ def_int $damage = last_int;
 // trigger on its own early exits — anything written after the call never runs.
 def_int $after = max(sub(npc_stat(hitpoints), $damage), 0);
 if ($after > 0) {
+    // Latched here as well as at the attack, so a dip under the threshold that
+    // a healer undoes before his next shot still enrages him.
+    if ($after <= ^inferno_healers_hp) {
+        %inferno_zuk_enraged = 1;
+    }
     if (%inferno_jad_spawned ! 1 & $after <= ^inferno_jad_hp) {
         %inferno_jad_spawned = 1;
         %inferno_wave_time = add(%inferno_wave_time, ^inferno_wave_jad_delay);
