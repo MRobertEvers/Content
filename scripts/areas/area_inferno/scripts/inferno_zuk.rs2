@@ -37,6 +37,10 @@ if ($hp > 0 & $hp < npc_basestat(hitpoints)) {
     npc_queue(2, sub(npc_basestat(hitpoints), $hp), 1);
 }
 mes("TzKal-Zuk stirs.");
+// Put the number up before anyone has hit him, so it is on screen from the
+// start rather than appearing out of nowhere on the first hitsplat. After the
+// announcement, so the fight reads in the order it happens.
+~inferno_report_health(npc_stat(hitpoints));
 
 /**
  * Take one piece of the seal down. Idempotent, because a second ::~zuk finds
@@ -183,6 +187,24 @@ queue*(playerhit_n_retaliate, calc($duration / 30))(npc_uid);
 ~npc_set_attack_vars;
 
 /**
+ * Report Zuk's health to everyone in the arena as a chat line.
+ *
+ * Called with the health the current hit will leave rather than the health he
+ * has now, so the number matches the hitsplat it arrives with instead of
+ * trailing it by one. The active npc must be Zuk.
+ *
+ * The hunt loop is not for finding a target — it is the only way to get an
+ * active player at all. A queued npc script runs with none, so there is nobody
+ * for `mes` to talk to until the arena is walked for one.
+ */
+[proc,inferno_report_health](int $hp)
+def_string $report = "TzKal-Zuk: <tostring($hp)>/<tostring(npc_basestat(hitpoints))>";
+huntall(npc_coord, ^inferno_scan_range, ^vis_off);
+while (huntnext = true) {
+    mes($report);
+}
+
+/**
  * Is the player standing in the glyph's shadow?
  *
  * The band is the glyph's own three tiles, widened by where it is heading: a
@@ -240,6 +262,13 @@ def_int $damage = last_int;
 // before the damage itself, because ~npc_default_damage returns out of the
 // trigger on its own early exits — anything written after the call never runs.
 def_int $after = max(sub(npc_stat(hitpoints), $damage), 0);
+// Report it on the glyph. Zuk stands at the far end of the arena, too far off
+// to read a hitsplat from and much too far to make out a health bar over, but
+// the glyph is the one thing in the fight that is always next to the player —
+// following it is the fight — so his health is written above that instead.
+// Every hit updates it, a blocked one included, because a zero still tells you
+// the shot landed on you rather than on him.
+~inferno_report_health($after);
 if ($after > 0) {
     // Latched here as well as at the attack, so a dip under the threshold that
     // a healer undoes before his next shot still enrages him.
