@@ -136,20 +136,51 @@ npc_statheal(hitpoints, last_int, 0);
 
 [ai_queue3,inferno_jad]
 npc_anim(npc_param(death_anim), 0);
-// Jad's healers have nothing left to heal.
+// Jad's healers have nothing left to heal, but they go with him rather than
+// before him: each is asked to remove itself once his death has finished
+// playing, so they are still standing there while he goes down.
 .npc_findallany(npc_coord, ^inferno_scan_range, ^vis_off);
 while (.npc_findnext = true) {
     if (.npc_type = inferno_hurkot) {
-        .npc_del;
+        .npc_queue(5, 0, ^inferno_jad_death_ticks);
     }
 }
 gosub(npc_default_death);
+
+// Jad is gone and his death has played out.
+[ai_queue5,inferno_hurkot]
+npc_del;
 
 // ---- Yt-HurKot ----------------------------------------------------------
 //
 // They ignore the player entirely: walk to Jad, then top it up every four ticks.
 
 [ai_timer,inferno_hurkot]
+// Tagged: it gives up on Jad and goes after whoever hit it, walking them down
+// first if it has to. Same latch as Zuk's healers, and for the same reason —
+// leaving them alive to top Jad up is what makes the phase drag.
+if (%inferno_healer_angry = 1) {
+    if (p_finduid(%inferno_healer_target) = false) {
+        return;
+    }
+    %inferno_healer_range = npc_range(coord);
+    if (%inferno_healer_range > npc_attackrange) {
+        if (%inferno_cooldown <= map_clock) {
+            %inferno_cooldown = add(map_clock, 2);
+            npc_walk(coord);
+        }
+        return;
+    }
+    if (%npc_action_delay > map_clock) {
+        return;
+    }
+    %npc_action_delay = add(map_clock, npc_param(attackrate));
+    npc_facesquare(coord);
+    npc_anim(npc_param(attack_anim), 0);
+    ~inferno_hit_player(0, ^crush_style, ^inferno_hurkot_maxhit);
+    return;
+}
+
 if (.npc_find(npc_coord, inferno_jad, ^inferno_scan_range, ^vis_off) = true) {
     if (npc_range(.npc_coord) > 1) {
         if (%inferno_cooldown <= map_clock) {
@@ -171,7 +202,14 @@ if (.npc_find(npc_coord, inferno_jad, ^inferno_scan_range, ^vis_off) = true) {
 // Nothing left to heal.
 npc_del;
 
+[ai_queue2,inferno_hurkot]
+// Set before the damage lands — ~npc_default_damage can return out of the
+// trigger, so anything after the call is unreachable.
+~inferno_healer_provoked;
+~npc_default_damage(last_int);
+
 [ai_queue1,inferno_hurkot]
+~inferno_healer_provoked;
 npc_setmode(none);
 
 [ai_opplayer2,inferno_hurkot]

@@ -143,7 +143,7 @@ if (%npc_action_delay > map_clock) {
     return;
 }
 
-if (%inferno_mejjak_angry ! 1) {
+if (%inferno_healer_angry ! 1) {
     if (.npc_find(npc_coord, inferno_zuk, ^inferno_scan_range, ^vis_off) = true) {
         %npc_action_delay = add(map_clock, ^inferno_mejjak_heal_rate);
         npc_facesquare(.npc_coord);
@@ -157,63 +157,134 @@ if (%inferno_mejjak_angry ! 1) {
     return;
 }
 
-// Angry: it has turned its back on Zuk and bombards the ground behind it.
-// npc_attackrange, not npc_param(attackrange): `attackrange` is a config field
-// on the npc, and the identically-named param is a different thing that nothing
-// here sets, so reading it gave 0 — a hunt of radius zero that found nobody and
-// left the barrage permanently silent.
-huntall(npc_coord, npc_attackrange, ^vis_off);
-while (huntnext = true) {
-    %npc_action_delay = add(map_clock, npc_param(attackrate));
-    // Kronos centres the barrage on the healer's own column dropped to the
-    // player's row — which, given the healers sit on the shelf north of the
-    // pit, is the ground directly behind one that has turned around. It does
-    // not track the player across the arena; it covers where they were.
-    def_coord $centre = movecoord(coord, sub(coordx(npc_coord), coordx(coord)), 0, 0);
-    npc_facesquare($centre);
-    npc_anim(npc_param(attack_anim), 0);
-    ~inferno_mejjak_lava($centre);
-    ~inferno_mejjak_lava($centre);
-    ~inferno_mejjak_lava($centre);
+// Angry: it has already turned to face the arena, and now rains lava on it.
+//
+// It shoots whoever hit it, remembered on the tick it was provoked, so there is
+// no hunt here at all — the only question left is how far away they have got
+// to, which is what %inferno_healer_range holds. A healer whose attacker has
+// logged out or walked out of range simply waits.
+if (p_finduid(%inferno_healer_target) = false) {
     return;
 }
+%inferno_healer_range = npc_range(coord);
+// npc_attackrange, not npc_param(attackrange): `attackrange` is a config field
+// on the npc, and the identically-named param is a different thing that nothing
+// here sets, so reading it gave 0 and left the barrage permanently silent.
+if (%inferno_healer_range > npc_attackrange) {
+    return;
+}
+%npc_action_delay = add(map_clock, npc_param(attackrate));
+// Turn to them, then fire down whichever of the three columns that turn points
+// at. Always three balls; the facing decides where the column sits, and the
+// depth is picked off the arena edge rather than off the player.
+npc_facesquare(coord);
+npc_anim(npc_param(attack_anim), 0);
+def_int $shift = ~inferno_mejjak_band_shift(sub(coordx(coord), coordx(npc_coord)));
+~inferno_mejjak_lava($shift);
+~inferno_mejjak_lava($shift);
+~inferno_mejjak_lava($shift);
 
 /**
- * One of the three splashes that make up a barrage. Kronos shuffles the square
- * and takes three distinct tiles; three independent picks can collide, which
- * costs the occasional splash and never adds one.
+ * Which of the three columns a healer covers, as an offset from its own tile.
+ *
+ * Zero is straight ahead and the column is symmetric. Turned either way, the
+ * same seven-wide window slides two tiles that way, so it reaches five to one
+ * side and one to the other. It only turns once the player is far enough off
+ * its column that firing straight ahead would miss them outright.
  */
-[proc,inferno_mejjak_lava](coord $centre)
-def_coord $tile = movecoord(
-    $centre,
-    sub(random(add(multiply(^inferno_mejjak_lava_radius, 2), 1)), ^inferno_mejjak_lava_radius),
-    0,
-    sub(random(add(multiply(^inferno_mejjak_lava_radius, 2), 1)), ^inferno_mejjak_lava_radius));
+[proc,inferno_mejjak_band_shift](int $dx)(int)
+if ($dx <= sub(0, ^inferno_mejjak_band_turn)) {
+    return(sub(0, ^inferno_mejjak_band_shift));
+}
+if ($dx >= ^inferno_mejjak_band_turn) {
+    return(^inferno_mejjak_band_shift);
+}
+return(0);
+
+/**
+ * One of the three lava balls that make up a barrage. Three independent picks
+ * out of the same small square, so two can collide — that costs a ball and
+ * never adds one.
+ *
+ * A ball that would land off the arena floor is dropped rather than moved. The
+ * healers stand on the lava shelf, which is blocked map, and the tiles between
+ * them and the pit are blocked too; a splash there is one no player could have
+ * been standing under. Kronos filters its candidates the same way.
+ */
+[proc,inferno_mejjak_lava](int $shift)
+// Somewhere in the seven-wide column the healer is facing down, and one to four
+// tiles in from the arena's edge.
+def_int $dx = add(
+    $shift,
+    sub(
+        random(add(multiply(^inferno_mejjak_band_halfwidth, 2), 1)),
+        ^inferno_mejjak_band_halfwidth));
+def_int $depth = add(random(^inferno_mejjak_lava_depth), 1);
+def_int $row = sub(^inferno_arena_north_z, sub($depth, 1));
+def_coord $tile = movecoord(npc_coord, $dx, 0, sub($row, coordz(npc_coord)));
+if (map_blocked($tile) = true) {
+    return;
+}
 def_int $flight = ~coord_projectile(npc_coord, $tile, inferno_heal_proj, 0, 0, 0, 45, 75, 32, 0);
 spotanim_map(inferno_lava_splash, $tile, 0, $flight);
 queue*(inferno_mejjak_lava_hit, ^inferno_mejjak_lava_delay)($tile);
 
 /**
- * The splash lands. It only catches a player still standing on that exact tile,
- * and it ignores prayer and defence when it does — three tiles out of a
- * seven-by-seven square, so moving at all is what takes nothing.
+ * A ball lands, for 5-10, ignoring prayer and defence.
+ *
+ * It does not have to land on the player: each ball covers a 3x3, so standing
+ * anywhere touching the tile it hits is enough to be caught. Three of those
+ * over an eleven-wide band is what makes the barrage worth stepping out of
+ * rather than tanking.
  */
 [queue,inferno_mejjak_lava_hit](coord $tile)
-if (coord ! $tile) {
+if (coordx(coord) < sub(coordx($tile), ^inferno_mejjak_lava_splash) |
+    coordx(coord) > add(coordx($tile), ^inferno_mejjak_lava_splash) |
+    coordz(coord) < sub(coordz($tile), ^inferno_mejjak_lava_splash) |
+    coordz(coord) > add(coordz($tile), ^inferno_mejjak_lava_splash)) {
     return;
 }
-queue(damage_player, 0, randominc(^inferno_mejjak_maxhit));
+queue(
+    damage_player,
+    0,
+    add(^inferno_mejjak_lava_min,
+        random(calc(^inferno_mejjak_maxhit - ^inferno_mejjak_lava_min + 1))));
 
 // Being hit is the switch: from here on it fights instead of healing.
 [ai_queue2,inferno_mejjak]
-// Set before the damage is applied — ~npc_default_damage returns out of the
+// All set before the damage is applied — ~npc_default_damage returns out of the
 // trigger on its own early exits, so anything after the call is unreachable.
-%inferno_mejjak_angry = 1;
+~inferno_mejjak_provoked;
 ~npc_default_damage(last_int);
 
 [ai_queue1,inferno_mejjak]
-%inferno_mejjak_angry = 1;
+~inferno_mejjak_provoked;
 npc_setmode(none);
+
+/**
+ * Turn a healer — either kind. It stops healing and remembers who hit it.
+ *
+ * `%npc_aggressive_player` is set by the standard retaliate path on the
+ * player's side, which is the only place the attacker is known: a queued npc
+ * script has no active player of its own.
+ */
+[proc,inferno_healer_provoked]
+%inferno_healer_angry = 1;
+%inferno_healer_target = %npc_aggressive_player;
+
+/**
+ * A Jal-MejJak turning. It comes round on this tick rather than on its next
+ * attack — it has spent the fight staring north at Zuk, and the tell that it
+ * has been tagged is that it turns straight away.
+ *
+ * It turns to whoever hit it, not to a fixed direction: which way it ends up
+ * pointing is what decides the column it will bombard.
+ */
+[proc,inferno_mejjak_provoked]
+~inferno_healer_provoked;
+if (p_finduid(%inferno_healer_target) = true) {
+    npc_facesquare(coord);
+}
 
 [ai_opplayer2,inferno_mejjak]
 npc_setmode(none);

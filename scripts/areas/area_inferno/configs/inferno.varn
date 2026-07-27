@@ -36,8 +36,18 @@
 [inferno_glyph_dir]
 [inferno_glyph_stopped]
 
-// A Zuk healer heals until the player hits it, then switches to attacking.
-[inferno_mejjak_angry]
+// A healer — either kind — heals until the player hits it, and fights from
+// then on. Zuk's Jal-MejJak bombard the arena; Jad's Yt-HurKot go for whoever
+// hit them.
+[inferno_healer_angry]
+
+// Who hit it, and how far away they were when it last looked. Remembered on
+// the tick it is provoked so neither healer has to scan the arena for somebody
+// to fight — it already knows, and only has to ask how far.
+[inferno_healer_target]
+type=player_uid
+
+[inferno_healer_range]
 
 // The same idea for the wave adds and Jad: they arrive aimed at the glyph and
 // only turn on the player once the player has given them a reason to.

@@ -384,29 +384,52 @@ while (npc_findnext = true) {
 }
 mes("No JalTok-Jad nearby.");
 
-//! Poke one of Zuk's Jal-MejJak healers for a single point of damage, which is
-//! all it takes to turn one: they heal until they are hit and bombard the
-//! ground behind them afterwards. There is no other way to provoke one without
-//! standing in the arena swinging at it.
+//! Poke every healer in the arena — Zuk's Jal-MejJak and Jad's Yt-HurKot — for
+//! a single point of damage, which is all it takes to turn one. Both kinds heal
+//! until they are hit; the Jal-MejJak then bombard the arena and the Yt-HurKot
+//! come after you. There is no other way to provoke one without standing in the
+//! arena swinging at it.
 [debugproc,tagheal]
 if_close;
 if (p_finduid(uid) = false) {
     return;
 }
 p_teleport(^inferno_healer_watch_coord);
-// All four, not the first one found: they are spread across the width of the
+// Self-contained: if the fight has not reached the healer phase, put the four
+// Jal-MejJak on the shelf where it would have. Reaching them the long way round
+// means three commands and three logins, and a healer that is already angry
+// never looks for Zuk again, so it does not need him to exist.
+def_int $present = 0;
+npc_findallany(^inferno_zuk_coord, ^inferno_scan_range, ^vis_off);
+while (npc_findnext = true) {
+    if (npc_type = inferno_mejjak | npc_type = inferno_hurkot) {
+        $present = add($present, 1);
+    }
+}
+if ($present = 0) {
+    npc_add(^inferno_healer_coord1, inferno_mejjak, ^inferno_npc_duration);
+    npc_add(^inferno_healer_coord2, inferno_mejjak, ^inferno_npc_duration);
+    npc_add(^inferno_healer_coord3, inferno_mejjak, ^inferno_npc_duration);
+    npc_add(^inferno_healer_coord4, inferno_mejjak, ^inferno_npc_duration);
+}
+// All of them, not the first one found: they are spread across the width of the
 // shelf and only reach six tiles, so tagging whichever turned up first would
 // often turn one that cannot see the player and look like nothing happened.
 def_int $tagged = 0;
 npc_findallany(^inferno_zuk_coord, ^inferno_scan_range, ^vis_off);
 while (npc_findnext = true) {
-    if (npc_type = inferno_mejjak) {
+    if (npc_type = inferno_mejjak | npc_type = inferno_hurkot) {
+        // Both halves of what a real attack does: the damage, and the note of
+        // who dealt it. A healer shoots back at whoever is recorded there, so
+        // queueing the damage on its own would turn it and leave it with
+        // nobody to aim at.
+        %npc_aggressive_player = uid;
         npc_queue(2, 1, 0);
         $tagged = add($tagged, 1);
     }
 }
 if ($tagged = 0) {
-    mes("No Jal-MejJak nearby.");
+    mes("No healers nearby.");
     return;
 }
-mes("Tagged <tostring($tagged)> Jal-MejJak.");
+mes("Tagged <tostring($tagged)> healer(s).");

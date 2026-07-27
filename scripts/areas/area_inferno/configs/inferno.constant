@@ -109,22 +109,53 @@
 ^inferno_zek_maxhit = 70
 ^inferno_mejjak_maxhit = 10
 
-// Healing.
-^inferno_mejjak_heal_min = 10
+// Healing. The wiki has the Jal-MejJak putting 15-25 back on Zuk every three
+// ticks, which is why a wave of them has to be tagged rather than out-damaged.
+^inferno_mejjak_heal_min = 15
 ^inferno_mejjak_heal_max = 25
-^inferno_mejjak_heal_rate = 5
+^inferno_mejjak_heal_rate = 3
 ^inferno_hurkot_heal_rate = 4
-// Once a healer has been hit it stops healing and bombards the ground behind
-// it: three tiles picked out of the square this far around the strike point,
-// each landing this many ticks later. Kronos' area(3) is -3..+3 on both axes.
-^inferno_mejjak_lava_radius = 3
+// What a Yt-HurKot hits for once it stops healing and comes for you. 13 is the
+// figure the wiki gives them; they are the same npc as the Fight Caves ones.
+^inferno_hurkot_maxhit = 13
+// Once a healer has been hit it stops healing and rains lava balls on the arena
+// in front of it. Always three of them, each for 5-10, each landing this many
+// ticks after it is fired.
+//
+// A provoked healer turns to face the player, and where it ends up pointing
+// decides which seven-wide column it covers. There are only three answers:
+//
+//   centre        3 left, its own tile, 3 right
+//   turned west   5 left, its own tile, 1 right
+//   turned east   1 left, its own tile, 5 right
+//
+// All seven wide; the window just slides two tiles the way it turned. It picks
+// the one that covers the player's column, so the player's position chooses the
+// facing but never aims the individual balls.
+^inferno_mejjak_band_halfwidth = 3
+^inferno_mejjak_band_shift = 2
+// How far off its own column the player has to be before it turns rather than
+// firing straight ahead — far enough out that the centre band would miss them.
+^inferno_mejjak_band_turn = 4
+// Depth is measured in from the arena's north edge, never from the player.
+^inferno_mejjak_lava_depth = 4
 ^inferno_mejjak_lava_delay = 3
+^inferno_mejjak_lava_min = 5
+// Each ball damages the tile it lands on and every tile touching it: a 3x3.
+^inferno_mejjak_lava_splash = 1
+// The arena's north edge row. The pit is a clean rectangle, local z 17-46, so
+// the band above is inside it by construction whichever healer fires.
+^inferno_arena_north_z = 5358
 
 // Jad's own healers are Yt-HurKot, not the Jal-MejJak that heal Zuk. Kronos
 // spawns wave 69's set in the three-by-three square centred five tiles north of
 // Jad's centre; Jad is five wide, so its centre is two tiles in from its coord.
 ^inferno_jad_healer_dx = 2
 ^inferno_jad_healer_dz = 7
+// They outlive Jad by exactly as long as his death takes to play, rather than
+// blinking out the instant he dies. His death seq runs 154 client cycles, a
+// shade over five server ticks, so six covers it.
+^inferno_jad_death_ticks = 6
 
 // Where ::~tagheal stands the player: the healers sit on the shelf at z 5363
 // and only reach six tiles, so the arena entry point is well outside their
