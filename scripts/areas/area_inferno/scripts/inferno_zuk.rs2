@@ -70,6 +70,22 @@ queue(inferno_seal_clear, ^inferno_seal_clear_delay, 0);
 [queue,inferno_seal_clear]
 ~inferno_break_seal(^inferno_rock_coord_west, inferno_loc_30344);
 ~inferno_break_seal(^inferno_rock_coord_east, inferno_loc_30343);
+// What the collapse leaves behind. The rocks do not simply vanish: one of the
+// standing pieces drops to its low form where it was, and three low ones are
+// added around it, so the alcove reads as broken rather than swept.
+if (loc_find(^inferno_rubble_change_coord, inferno_loc_30332) = true) {
+    loc_change(inferno_loc_30339, ^inferno_npc_duration);
+}
+~inferno_rubble(^inferno_rubble_coord_west_near, inferno_loc_30340, ^inferno_rubble_angle_west);
+~inferno_rubble(^inferno_rubble_coord_west_far, inferno_loc_30342, ^inferno_rubble_angle_west);
+~inferno_rubble(^inferno_rubble_coord_east_far, inferno_loc_30341, ^inferno_rubble_angle_east);
+
+/**
+ * Drop one piece of low rock. Spawned rather than changed — these have nothing
+ * standing in their place to begin with, they are only there once Zuk is out.
+ */
+[proc,inferno_rubble](coord $coord, loc $loc, int $angle)
+loc_add($coord, $loc, $angle, centrepiece_straight, ^inferno_npc_duration);
 
 [proc,inferno_anim_rock](coord $coord, loc $loc)
 if (loc_find($coord, $loc) = true) {

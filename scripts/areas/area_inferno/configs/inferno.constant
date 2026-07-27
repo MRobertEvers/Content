@@ -44,6 +44,17 @@
 ^inferno_glyph_loc_coord = 0_35_83_30_51
 ^inferno_rock_coord_west = 0_35_83_28_52
 ^inferno_rock_coord_east = 0_35_83_33_52
+
+// What is left lying either side of him once they have come down. Kronos turns
+// the standing loc at (2275, 5364) into its low form and drops three more in,
+// two to Zuk's west and one to his east, all centrepiece_straight — so it ends up
+// rubble-strewn rather than simply emptied.
+^inferno_rubble_change_coord = 0_35_83_35_52
+^inferno_rubble_coord_west_near = 0_35_83_27_52
+^inferno_rubble_coord_west_far = 0_35_83_27_54
+^inferno_rubble_coord_east_far = 0_35_83_35_54
+^inferno_rubble_angle_west = 1
+^inferno_rubble_angle_east = 3
 // Kronos' collapse timing: swap to the "Falling rock" twin, let go two ticks
 // later, clear two ticks after that. The second gap is not arbitrary — the
 // collapse seq runs 60 client cycles, which is exactly two server ticks, so
