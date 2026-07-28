@@ -45,7 +45,7 @@ if (p_finduid(uid) = false) {
 mes("Spec animation firing on a loop.");
 
 [proc,dcspec_fire](int $times)
-anim(impale, 0);
+anim(dragon_claws_spec, 0);
 spotanim_pl(dragon_claws_spec_spot, 96, 0);
 if ($times > 0) {
     queue(dcspec_repeat, 3, sub($times, 1));
