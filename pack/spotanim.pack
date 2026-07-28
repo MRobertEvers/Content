@@ -292,3 +292,14 @@
 291=inferno_jad_range_gfx
 292=inferno_jad_hit
 293=inferno_hurkot_heal_gfx
+294=td_fireball_proj
+295=td_fireball_impact
+296=td_fireball_large_proj
+297=td_fireball_large_impact
+298=td_fireball_impact_spot
+299=td_melee_gfx
+300=td_shield_gfx
+301=td_shield_restore_gfx
+302=td_explosion_fire_gfx
+303=td_summon_gfx
+304=td_death_gfx

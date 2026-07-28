@@ -1,0 +1,44 @@
+// Per-demon fight state.
+//
+// Every flag here is a plain int used as 0/1 rather than a `type=boolean`.
+// LostCity resets an npc's non-int vars to -1 when it respawns one, so a
+// boolean var reads as neither true nor false and `= false` never matches —
+// the same trap that silently swallowed every Inferno phase trigger.
+
+// Set on the first tick the demon has someone to fight. Nothing is on the
+// clock until then: the bomb and defenceless counters are both measured from
+// the start of the fight, not from the spawn.
+[td_engaged]
+
+// 1 while the fire shield is up. Up at spawn, off the first time it is struck,
+// back on after every bomb.
+[td_shield]
+
+// 1 once the flames have gone out and it has stopped defending. Cleared by the
+// player's first hit after a bomb.
+[td_defenceless]
+
+// map_clock stamps: when the next bomb is due, and when the flames go out.
+[td_bomb_clock]
+[td_defenceless_clock]
+
+// ^td_style_* — what it attacked with last, so magic and ranged alternate
+// instead of one of them being rolled twice in a row.
+[td_style]
+
+// ^td_style_* — the overhead it is currently praying, and the damage it has
+// taken since it last changed it.
+[td_prayer]
+[td_damage_since_swap]
+
+// ^td_style_* — the style the player last damaged it with. Read out of the
+// attacker's own %damagetype at the moment the hit lands, which is the only
+// place that information exists; by the time the swap threshold trips, the
+// player may be holding something else.
+[td_last_hit_style]
+
+// map_clock stamp: it stands still until this passes, after a prayer swap.
+[td_stunned_until]
+
+// map_clock stamp: when the warded-style overhead needs saying again.
+[td_say_clock]

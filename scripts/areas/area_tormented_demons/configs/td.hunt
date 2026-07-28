@@ -1,0 +1,16 @@
+// The demon closes on the player using the stock hunt/attack modes; only the
+// swing itself is scripted, because choosing between three styles and firing a
+// projectile is not something the default attack path can express.
+//
+// check_nottoostrong is off for the same reason it is off in the Inferno: at
+// level 450 the stock guard would refuse to let it engage anybody.
+[td_demon]
+type=player
+check_vis=lineofsight
+check_nottoostrong=off
+check_notcombat=%lastcombat
+check_notcombat_self=%npc_lastcombat
+check_notbusy=off
+check_afk=off
+find_keephunting=on
+find_newmode=applayer2

@@ -1,0 +1,454 @@
+// Tormented Demons.
+//
+// The fight is four clocks running at once, all read off the demon every tick
+// from ai_timer:
+//
+//   attack      every 6 ticks, in whichever of the three styles it picked
+//   defenceless 30 ticks in, the flames go out and it stops defending
+//   fire bomb   every 60 ticks, two bombs and a forced style change
+//   prayer      every 150 damage taken, it swaps overhead and stands still 6
+//
+// None of them start at spawn. They start on the first tick it has someone to
+// fight, which is what %td_engaged marks — a demon standing in an empty room is
+// not on any clock, and walking away and coming back does not hand you a fight
+// that is already half over.
+//
+// The one thing that is not a clock is the fire shield. It is up when the demon
+// spawns, comes off the first time it is struck, and goes back on after every
+// bomb — so it protects the opening and the beat after each bomb, and nothing
+// else. It is *geometry*, not an overlay: the source cache ships two body
+// models, 53287 with the shield and 53285 without, so dropping it is an
+// npc_changetype between the two npc types rather than a spotanim.
+//
+// Both npc types carry the same triggers. Every one of them is a two-line stub
+// that jumps to a shared label, because the demon spends the fight swapping
+// between them and a trigger written for only one form would go quiet for half
+// the fight.
+
+// ---- helpers -------------------------------------------------------------
+
+// Finding the player this demon is fighting is written out at every site that
+// needs one, rather than wrapped in a proc.
+//
+//     if (%npc_aggressive_player = null) { return; }
+//     if (p_finduid(%npc_aggressive_player) = false) { return; }
+//
+// The compiler tracks per script whether an active player has been established,
+// and a proc that returns "yes I found one" does not convince it — the same
+// rule that stops the Inferno's glyph lookup being factored out. Neither an
+// ai_timer nor a queued npc script runs with a player of its own, so every one
+// of them has to do this before it can read a coord or say anything;
+// %npc_aggressive_player is set by the shared ~npc_retaliate on the player's
+// side of every hit, which is the only handle either has.
+
+/**
+ * Map a player's %damagetype onto the three styles the demon prays against.
+ *
+ * The four melee damage types collapse to one overhead, which is why this is a
+ * switch and not a cast: a demon praying against stab is praying against every
+ * melee weapon in the game.
+ */
+[proc,td_style_of_damagetype](int $damagetype)(int)
+switch_int ($damagetype) {
+    case ^ranged_style : return(^td_style_ranged);
+    case ^magic_style : return(^td_style_magic);
+    case default : return(^td_style_melee);
+}
+
+/** Arm every clock off the current tick. Called once, when the fight starts. */
+[proc,td_engage]
+%td_engaged = 1;
+%td_bomb_clock = add(map_clock, ^td_bomb_interval);
+%td_defenceless_clock = add(map_clock, ^td_defenceless_delay);
+
+// ---- the shield ----------------------------------------------------------
+
+/**
+ * Drop the fire shield.
+ *
+ * npc_changetype_keepall rather than npc_changetype: the plain form resets the
+ * npc, which would hand the demon its 600 hitpoints back every time the player
+ * hit it. "Keep all" carries the stats and the vars across, so the swap stays
+ * what it is meant to be — a change of model.
+ */
+[proc,td_shield_drop]
+if (%td_shield ! 1) {
+    return;
+}
+%td_shield = 0;
+npc_changetype_keepall(td_demon_unshielded, ^td_npc_duration);
+spotanim_npc(td_shield_gfx, 0, 0);
+
+/** Put it back, after a bomb. */
+[proc,td_shield_raise]
+if (%td_shield = 1) {
+    return;
+}
+%td_shield = 1;
+npc_changetype_keepall(td_demon, ^td_npc_duration);
+spotanim_npc(td_shield_restore_gfx, 0, 0);
+
+// ---- the fire bomb -------------------------------------------------------
+
+/**
+ * The fire bomb. Two of them: one on the tile the player is standing on, and
+ * one on a random other tile of the 3x3 around them.
+ *
+ * Runs with the target already active — every caller has been through
+ * ~td_find_target — because it has to disable their run and read their coord.
+ *
+ * Both tiles are committed here, at cast time. That is the whole mechanic: the
+ * player is being asked not to be standing there in two ticks, so resolving the
+ * target late, when the damage lands, would make it unavoidable.
+ */
+[proc,td_fire_bomb]
+npc_facesquare(coord);
+npc_anim(td_explosion_fire, 0);
+// Disabling run is what makes the two-tick window tight rather than trivial.
+// It goes back on when the bombs land, whichever of them lands last.
+p_run(0);
+mes("The Tormented Demon hurls a fire bomb!");
+
+def_coord $centre = coord;
+spotanim_map(td_explosion_fire_gfx, $centre, ^td_bomb_height, 0);
+queue*(td_bomb_land, ^td_bomb_fuse)($centre);
+
+// The second lands somewhere else in the 3x3 — nudged off centre rather than
+// re-rolled, so it is never silently the same tile as the first.
+def_int $dx = sub(random(3), 1);
+def_int $dz = sub(random(3), 1);
+if ($dx = 0 & $dz = 0) {
+    $dx = 1;
+}
+def_coord $second = movecoord($centre, $dx, 0, $dz);
+spotanim_map(td_explosion_fire_gfx, $second, ^td_bomb_height, 0);
+queue*(td_bomb_land, ^td_bomb_fuse)($second);
+
+// The shield comes back up, the flames come back on and the style is forced to
+// change — the wiki calls out all three as always happening after a bomb.
+~td_shield_raise;
+%td_defenceless = 0;
+%td_defenceless_clock = add(map_clock, ^td_defenceless_delay);
+%td_bomb_clock = add(map_clock, ^td_bomb_interval);
+%td_style = ^td_style_none;
+
+/**
+ * A bomb going off, two ticks after it was marked.
+ *
+ * A player queue rather than an npc one: it needs the player's coord at the
+ * moment of the blast, and the typed `queue*` form is what lets the tile
+ * survive the fuse — an npc queue carries a single int, and a coord is three
+ * numbers.
+ */
+[queue,td_bomb_land](coord $tile)
+p_run(1);
+// A 3x3 splash centred on the marked tile, so stepping one square off a bomb
+// is only safe if it was not the other bomb's square you stepped onto.
+if (coordy(coord) ! coordy($tile)) {
+    return;
+}
+if (coordx(coord) < sub(coordx($tile), ^td_bomb_splash) |
+    coordx(coord) > add(coordx($tile), ^td_bomb_splash) |
+    coordz(coord) < sub(coordz($tile), ^td_bomb_splash) |
+    coordz(coord) > add(coordz($tile), ^td_bomb_splash)) {
+    return;
+}
+spotanim_pl(td_fireball_large_impact, 0, 0);
+~damage_self(randominc(^td_bomb_maxhit));
+
+// ---- attacks -------------------------------------------------------------
+
+/**
+ * Melee. Used whenever the demon is standing next to the player — the style is
+ * chosen by where it is, not by a roll, which is what makes backing away from
+ * it a real decision rather than a stat check.
+ */
+[proc,td_attack_melee]
+npc_anim(td_melee, 0);
+spotanim_npc(td_melee_gfx, 0, 0);
+%td_style = ^td_style_melee;
+if (~headicon_exists(^headicon_prayer_protectfrommelee) = false) {
+    queue(combat_damage_player, 0, randominc(^td_maxhit));
+}
+queue*(playerhit_n_retaliate, 0)(npc_uid);
+~npc_set_attack_vars;
+
+/** Magic: the big slow fireball. */
+[proc,td_attack_magic]
+npc_anim(td_firey_balls, 0);
+%td_style = ^td_style_magic;
+def_int $duration = ~player_projectile(
+    npc_coord, coord, uid, td_fireball_large_proj,
+    ^td_proj_start_height, ^td_proj_end_height,
+    ^td_proj_delay, ^td_proj_duration, ^td_proj_peak, 0, ^td_proj_arc);
+anim(%com_defendanim, $duration);
+if (~headicon_exists(^headicon_prayer_protectfrommagic) = false) {
+    queue(combat_damage_player, calc($duration / 30), randominc(^td_maxhit));
+}
+queue*(playerhit_n_retaliate, calc($duration / 30))(npc_uid);
+~npc_set_attack_vars;
+
+/**
+ * Ranged. The animation is called `spare_ribs` in the source cache — that is
+ * the content team's own name for it, not a euphemism: the demon opens its rib
+ * cage and throws.
+ */
+[proc,td_attack_ranged]
+npc_anim(td_spare_ribs, 0);
+%td_style = ^td_style_ranged;
+def_int $duration = ~player_projectile(
+    npc_coord, coord, uid, td_fireball_proj,
+    ^td_proj_start_height, ^td_proj_end_height,
+    ^td_proj_delay, ^td_proj_duration, ^td_proj_peak, 0, ^td_proj_arc);
+anim(%com_defendanim, $duration);
+if (~headicon_exists(^headicon_prayer_protectfromrange) = false) {
+    queue(combat_damage_player, calc($duration / 30), randominc(^td_maxhit));
+}
+queue*(playerhit_n_retaliate, calc($duration / 30))(npc_uid);
+~npc_set_attack_vars;
+
+// ---- the brain -----------------------------------------------------------
+
+[ai_timer,td_demon]
+@td_tick;
+
+[ai_timer,td_demon_unshielded]
+@td_tick;
+
+[label,td_tick]
+if (%npc_aggressive_player = null) {
+    return;
+}
+if (p_finduid(%npc_aggressive_player) = false) {
+    return;
+}
+if (%td_engaged ! 1) {
+    ~td_engage;
+}
+
+// The prayer-swap pause outranks everything: it is standing still, not picking
+// what to do next.
+if (%td_stunned_until > map_clock) {
+    return;
+}
+
+// The bomb outranks the ordinary attack and takes the attack cooldown with it,
+// so a bomb is never doubled up with a swing on the same tick.
+if (%td_bomb_clock <= map_clock) {
+    %npc_action_delay = add(map_clock, npc_param(attackrate));
+    ~td_fire_bomb;
+    return;
+}
+
+// Keep the overhead standing in for an icon. Cheap, and it has to happen
+// whether or not the demon is doing anything else this tick.
+if (%td_prayer ! ^td_style_none & %td_say_clock <= map_clock) {
+    ~td_declare_prayer;
+}
+
+// The flames go out on schedule, whether or not it is its turn to attack.
+if (%td_defenceless ! 1 & %td_defenceless_clock <= map_clock) {
+    %td_defenceless = 1;
+    spotanim_npc(td_shield_gfx, 0, 0);
+    mes("The flames on the demon's back go out.");
+}
+
+if (%npc_action_delay > map_clock) {
+    return;
+}
+%npc_action_delay = add(map_clock, npc_param(attackrate));
+npc_facesquare(coord);
+
+// Adjacent means melee. Otherwise it alternates magic and ranged rather than
+// rolling: the fight is built so a player who was paying attention knows which
+// of the two is coming next, and a fresh roll every time would take that away.
+if (npc_range(coord) <= 1) {
+    ~td_attack_melee;
+    return;
+}
+if (%td_style = ^td_style_magic) {
+    ~td_attack_ranged;
+    return;
+}
+if (%td_style = ^td_style_ranged) {
+    ~td_attack_magic;
+    return;
+}
+// No style yet — a fresh spawn, or the tick after a bomb. Either is fair.
+if (random(2) = 0) {
+    ~td_attack_magic;
+} else {
+    ~td_attack_ranged;
+}
+
+// ---- taking damage -------------------------------------------------------
+
+[ai_queue2,td_demon]
+@td_damaged;
+
+[ai_queue2,td_demon_unshielded]
+@td_damaged;
+
+[label,td_damaged]
+def_int $damage = last_int;
+def_int $style = ^td_style_none;
+
+// Read what hit it while the attacker is still holding it. This is the only
+// moment that information exists: by the time the swap threshold trips, the
+// player may have switched weapons twice.
+if (%npc_aggressive_player ! null & p_finduid(%npc_aggressive_player) = true) {
+    $style = ~td_style_of_damagetype(%damagetype);
+    %td_last_hit_style = $style;
+
+    // The overhead it swapped to earlier stops that style outright, which is
+    // what forces a second combat style into the trip. Nothing in the sources
+    // gives a percentage, and full protection is what "you must bring two
+    // styles" describes, so that is what this is — tunable if it proves wrong.
+    if (%td_prayer = $style) {
+        $damage = 0;
+    }
+
+    // The fire shield takes 20% off anything that is not demonbane. Silverlight
+    // is this revision's demonbane weapon; the modern fight means Arclight and
+    // Emberlight, neither of which exists in 2004.
+    if (%td_shield = 1 & inv_getobj(worn, ^wearpos_rhand) ! silverlight) {
+        $damage = calc($damage - ($damage * ^td_shield_reduction / 100));
+    }
+}
+
+// Being struck is what takes the shield off, and the first hit after a bomb is
+// what ends the defenceless window.
+~td_shield_drop;
+%td_defenceless = 0;
+
+// Every 150 damage it changes overhead to whatever has been hurting it and
+// stands still for six ticks. Accumulated, rather than compared against a
+// hitpoint threshold, so healing it does not buy a second swap.
+%td_damage_since_swap = add(%td_damage_since_swap, $damage);
+if (%td_damage_since_swap >= ^td_prayer_swap_damage & %td_last_hit_style ! ^td_style_none) {
+    %td_damage_since_swap = 0;
+    %td_prayer = %td_last_hit_style;
+    %td_stunned_until = add(map_clock, ^td_prayer_swap_pause);
+    %npc_action_delay = add(map_clock, ^td_prayer_swap_pause);
+    npc_anim(td_defend, 0);
+    spotanim_npc(td_shield_restore_gfx, 0, 0);
+    ~td_declare_prayer;
+}
+
+~npc_default_damage($damage);
+
+/**
+ * Show which style the demon is warding, as overhead text on the demon.
+ *
+ * A 254 npc has no overhead prayer icon — the headicon field is the player's
+ * alone — so the thing that would be an icon floating over its head is text
+ * floating over its head instead. It sits in the same place and answers the
+ * same question, which is the only part of an icon that matters here.
+ *
+ * Overhead text fades after a few ticks, so this is re-asserted on a clock
+ * rather than said once: an icon does not disappear halfway through the phase
+ * it describes, and a tell you have to have been watching for is not a tell.
+ */
+[proc,td_declare_prayer]
+%td_say_clock = add(map_clock, ^td_say_interval);
+switch_int (%td_prayer) {
+    case ^td_style_melee : npc_say("Protect: Melee");
+    case ^td_style_ranged : npc_say("Protect: Missiles");
+    case ^td_style_magic : npc_say("Protect: Magic");
+}
+
+// ---- death ---------------------------------------------------------------
+
+[ai_queue3,td_demon]
+@td_death;
+
+[ai_queue3,td_demon_unshielded]
+@td_death;
+
+[label,td_death]
+spotanim_npc(td_death_gfx, 0, 0);
+gosub(npc_default_death);
+
+// ---- spawning ------------------------------------------------------------
+
+/**
+ * Put a demon on the ground with its summon animation.
+ *
+ * npc_add leaves the npc it made active, so the state below lands on the demon
+ * that was just created. Nothing arms the clocks here: %td_engaged does that,
+ * and it waits for the demon to actually have someone to fight.
+ */
+[proc,td_spawn](coord $coord)
+npc_add($coord, td_demon, ^td_npc_duration);
+npc_anim(td_summon, 0);
+spotanim_map(td_summon_gfx, $coord, 0, 0);
+%td_shield = 1;
+%td_style = ^td_style_none;
+%td_prayer = ^td_style_none;
+%td_last_hit_style = ^td_style_none;
+%td_damage_since_swap = 0;
+%td_engaged = 0;
+
+// ---- debug ---------------------------------------------------------------
+
+/** ::~td — stand a demon up next to you and fight it. */
+[debugproc,td]
+if_close;
+// A debugproc arrives with an active player but not a *protected* one, and
+// p_teleport needs the protected slot. p_finduid(uid) is what promotes it.
+if (p_finduid(uid) = false) {
+    return;
+}
+~td_clear;
+p_teleport(^td_test_player_coord);
+~td_spawn(^td_test_demon_coord);
+// A Tormented Demon is unaggressive — it does nothing at all until something
+// hits it. Handing it an opponent here is what a first player attack would
+// otherwise do, and without it the whole fight sits still waiting to be
+// provoked, which makes ::~td useless as a test.
+%npc_aggressive_player = uid;
+mes("A Tormented Demon claws its way out.");
+
+/** ::~tdclear — remove every demon around you. */
+[debugproc,tdclear]
+~td_clear;
+mes("Cleared.");
+
+[proc,td_clear]
+while (npc_find(coord, td_demon, ^td_scan_range, ^vis_off) = true) {
+    npc_del;
+}
+while (npc_find(coord, td_demon_unshielded, ^td_scan_range, ^vis_off) = true) {
+    npc_del;
+}
+
+/**
+ * ::~tdbomb — bring the fire bomb forward instead of waiting out the 60-tick
+ * clock.
+ *
+ * It moves the clock rather than calling ~td_fire_bomb directly: the bomb has
+ * to run on the demon's own tick, with the demon active and its target already
+ * resolved, so firing it from under a player script would be exercising a path
+ * the fight never takes.
+ */
+[debugproc,tdbomb]
+if (npc_find(coord, td_demon, ^td_scan_range, ^vis_off) = false) {
+    if (npc_find(coord, td_demon_unshielded, ^td_scan_range, ^vis_off) = false) {
+        mes("No demon nearby.");
+        return;
+    }
+}
+%td_bomb_clock = map_clock;
+mes("Fire bomb armed for the next tick.");
+
+/** ::~tdstate — print every clock the nearest demon is holding. */
+[debugproc,tdstate]
+if (npc_find(coord, td_demon, ^td_scan_range, ^vis_off) = false) {
+    if (npc_find(coord, td_demon_unshielded, ^td_scan_range, ^vis_off) = false) {
+        mes("No demon nearby.");
+        return;
+    }
+}
+mes("hp <tostring(npc_stat(hitpoints))>/<tostring(npc_basestat(hitpoints))>  shield <tostring(%td_shield)>  defenceless <tostring(%td_defenceless)>");
+mes("style <tostring(%td_style)>  praying <tostring(%td_prayer)>  dmg since swap <tostring(%td_damage_since_swap)>");
+mes("bomb in <tostring(sub(%td_bomb_clock, map_clock))>  flames out in <tostring(sub(%td_defenceless_clock, map_clock))>");

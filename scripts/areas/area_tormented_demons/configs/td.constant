@@ -1,0 +1,70 @@
+// Tormented Demon tuning. Numbers are the OSRS ones unless a line says
+// otherwise; where the modern fight assumes content this revision does not
+// have, the note says what was substituted.
+
+// Combat. Level 450, 600 hitpoints, and the source cache agrees — npc 13599's
+// stats(74-79) read attack 255, defence 150, strength 255, hitpoints 600,
+// ranged 255, magic 255.
+^td_hitpoints = 600
+^td_maxhit = 31
+^td_attackrate = 6
+// How far it will shoot. Melee is decided by adjacency, not by this.
+^td_attackrange = 8
+
+// The fire shield. It is up when the demon spawns, comes off the first time it
+// is struck, and goes back on after every fire bomb — so it is "up" only for
+// the opening and for the beat right after each bomb. While up it takes 20%
+// less damage from anything that is not demonbane.
+^td_shield_reduction = 20
+
+// Roughly 30 ticks into the fight the flames on its back go out and it stops
+// defending — every hit lands. That holds until the player's first hit after
+// the next fire bomb, and then the 30-tick count starts again.
+^td_defenceless_delay = 30
+
+// The fire bomb, roughly every 60 ticks. Two bombs: one on the tile the player
+// is standing on and one elsewhere in the 3x3 around them. Two ticks to walk
+// off before they land, and running is disabled for that window, so the only
+// safe answer is a single step. It always changes attack style afterwards.
+^td_bomb_interval = 60
+^td_bomb_fuse = 2
+^td_bomb_maxhit = 45
+// Height the bomb model sits at, and the splash radius in tiles (1 = a 3x3).
+^td_bomb_height = 0
+^td_bomb_splash = 1
+
+// Every 150 damage taken since the last swap it changes its overhead to the
+// style that last hurt it and stands still for 6 ticks.
+^td_prayer_swap_damage = 150
+^td_prayer_swap_pause = 6
+
+// %td_style / %td_prayer. Zero has to mean "nothing yet" so a freshly spawned
+// demon can tell it has not chosen a style, which is also why these are plain
+// ints — a `type=boolean` varn reads back -1 after a respawn.
+^td_style_none = 0
+^td_style_melee = 1
+^td_style_magic = 2
+^td_style_ranged = 3
+
+// Projectile flight, in client cycles. 30 cycles = 1 server tick.
+^td_proj_start_height = 60
+^td_proj_end_height = 31
+^td_proj_delay = 50
+^td_proj_duration = 16
+^td_proj_peak = 40
+^td_proj_arc = 8
+
+// How long a spawned demon lives before the engine reclaims it, and how far
+// the scripts look for their friends.
+^td_npc_duration = 5000
+^td_scan_range = 32
+
+// Where ::~td drops the player and puts the demon. The temple this fight
+// belongs to is not in a 2004 map, so testing happens on open ground.
+^td_test_player_coord = 0_50_50_20_20
+^td_test_demon_coord = 0_50_50_24_24
+
+// How often the warded-style overhead is re-said, so it reads as a standing
+// icon rather than a line that scrolled past. Overhead text fades well before
+// the next prayer swap is due.
+^td_say_interval = 7
