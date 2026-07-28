@@ -28,8 +28,20 @@
 ^inferno_glyph_west_x = 2257
 ^inferno_glyph_east_x = 2283
 ^inferno_glyph_row_z = 5361
-// Ticks the glyph sits in the seal before dropping to its row.
+// The glyph's opening, in two waits either side of its two-tile descent:
+// it drops out of the seal as soon as the cutscene is under way, then stands
+// parked on the arena row for the rest of the pan, and takes its first sweep
+// step the moment control returns. Reference footage: the emblem block is
+// already down at the lava's edge while the camera is still on Zuk, and it
+// starts sliding right as the "Attack" option comes back.
+//
+// ^inferno_glyph_drop_delay is ticks in the seal before the descent starts.
+// ^inferno_glyph_ready_delay is the total opening ticks before the sweep may
+// begin, counted on the same clock — the glyph's timer starts one tick after
+// npc_add, so a value of N means "first sweep step at T0+N". The cutscene
+// holds the player for ^inferno_cutscene_ticks (10).
 ^inferno_glyph_drop_delay = 3
+^inferno_glyph_ready_delay = 11
 
 // The seal. Three pieces of scenery hold Zuk in the wall, and the opening of
 // the fight is him breaking out of all of them — Kronos removes the glyph
@@ -68,20 +80,25 @@
 // why it exports invisible; removing it is what Kronos does with it anyway, so
 // nothing is lost by not being able to express the switch.
 //
-// The two formations are STATIC level-1 locs in m35_83.jm2, injected by the
-// exporter (`--maploc 35_83,1,28,52,...` in the README command) — the script
-// does not place them. Dynamic placement cannot work on this revision: a zone
-// update carries no plane, so a level-1 loc_add lands on the player's own
-// level — which is why the earlier "level 1 renders as a dark quad" experiment
-// misled; static level-1 locs render fine (the pit's rim ring is 113 of them).
-// And level 0 is not available: rotated they are 2x5 and their south ends
-// cover the standing seal rocks' own tiles, so adding them there replaces the
-// rocks and kills the collapse animation.
+// The two formations appear via loc_add from [queue,inferno_seal_clear] — the
+// tick the falling rocks are removed — simulating the multiloc transform this
+// revision cannot express. The ordering is the whole trick, learned twice:
 //
-// These constants only record where they stand; nothing reads them.
+//  - Added BEFORE the collapse (on the same tiles: rotated they are 2x5 and
+//    their south ends cover the standing rocks' tiles), the add replaces the
+//    standing rock, loc_find stops matching, and the collapse silently never
+//    plays.
+//  - Placed STATICALLY on level 1 (where Kronos spawns them), they stand from
+//    tick zero and visually swallow the collapse — the toppling rocks play out
+//    inside the crag geometry where nobody can see them.
+//
+// Added the tick the tiles come free, the opening reads in order: standing
+// rocks -> toppling animation -> gone -> crag formations and rubble in their
+// place, all inside the cutscene. Level 0, because a zone update carries no
+// plane and a scripted level-1 add lands on whatever level the player is on.
 ^inferno_flank_marker_coord = 1_35_83_27_56
-^inferno_flank_coord_west = 1_35_83_28_52
-^inferno_flank_coord_east = 1_35_83_33_52
+^inferno_flank_coord_west = 0_35_83_28_52
+^inferno_flank_coord_east = 0_35_83_33_52
 ^inferno_flank_angle = 3
 // Kronos' collapse timing: swap to the "Falling rock" twin, let go two ticks
 // later, clear two ticks after that. The second gap is not arbitrary — the

@@ -39,9 +39,6 @@ if (p_finduid(uid) = false) {
     @please_finish;
     return;
 }
-// Somewhere open and known, so a headless capture frames the player the same
-// way every run instead of wherever the test account last wandered.
-p_teleport(0_50_50_20_20);
 // Re-fired on a queue rather than played once, so a headless capture cannot
 // land in the gap between the animation ending and the screenshot.
 ~dcspec_fire(20);

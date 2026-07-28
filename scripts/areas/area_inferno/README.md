@@ -47,12 +47,12 @@ spawn(30346, 2268, 5364, 1, shape 10, angle 3)   // west of Zuk
 spawn(30345, 2273, 5364, 1, shape 10, angle 3)   // east of Zuk
 ```
 
-Both share model 33038 (447 vertices, 841 faces). Here they are **static
-level-1 locs in `m35_83.jm2`**, injected by the exporter's `--maploc` lines —
-see the export command below for why they can be neither scripted nor on
-level 0. Miss them and the arena has black wedges either side of Zuk where
-crag columns should rise out of the lava, which reads as a rendering bug
-rather than as absent scenery.
+Both share model 33038 (447 vertices, 841 faces). Here they rise from
+`[queue,inferno_seal_clear]` the moment the falling rocks are removed — the
+multiloc transform simulated as remove-then-add, and the only ordering that
+both shows the collapse and ends with the crags standing. Miss them and the
+arena has black wedges either side of Zuk where crag columns should rise out
+of the lava, which reads as a rendering bug rather than as absent scenery.
 
 What is left is not an empty alcove. As the collapse clears, four low rocks
 appear either side of him — Kronos turns the standing loc at (2275, 5364) into
@@ -187,20 +187,20 @@ make -C 3rd/rscache/tools port_lostcity
   --spotanim 660=inferno_heal_proj --spotanim 659=inferno_lava_splash \
   --spotanim 447=inferno_jad_magic_gfx --spotanim 448=inferno_jad_proj1 --spotanim 449=inferno_jad_proj2 --spotanim 450=inferno_jad_proj3 \
   --spotanim 451=inferno_jad_range_gfx --spotanim 157=inferno_jad_hit --spotanim 444=inferno_hurkot_heal_gfx \
-  --maploc 35_83,1,28,52,30346,10,3 \
-  --maploc 35_83,1,33,52,30345,10,3 \
   --map 35_83 --apply
 ```
 
-The two `--maploc` lines are the crag formations flanking Zuk, written into
-`m35_83.jm2` as **static level-1 locs** — where Kronos spawns them dynamically
-on level 1. They are static here because they cannot be anything else: a
-rev-254 zone update carries no plane, so a scripted `loc_add` on level 1 lands
-on whatever level the player is standing on; and level 0 is taken — rotated
-they are 2x5, and their south ends cover the standing seal rocks' own tiles,
-so a level-0 add *replaces* the rocks and silently kills the collapse
-animation (`loc_find` stops matching and the change never fires). That is not
-hypothetical; it is exactly how the collapse broke once.
+The crag formations flanking Zuk are placed by the script, from
+`[queue,inferno_seal_clear]` — the tick the falling rocks are removed — as a
+simulated multiloc transform. The ordering is load-bearing, learned twice:
+added *before* the collapse (their rotated 2x5 footprints cover the standing
+rocks' own tiles) the add replaces the rocks and the collapse silently never
+plays; placed *statically* they stand from tick zero and visually swallow the
+toppling animation. Added on the clear tick, the opening reads in order on
+camera: standing rocks, topple, gone, crags and rubble in their place. Level 0
+throughout — a zone update carries no plane, so a scripted level-1 add lands
+on whatever level the player is standing on. (The exporter still supports
+`--maploc X_Z,level,x,z,locid,shape,angle` for genuinely static injections.)
 
 It writes `configs/inferno.{npc,seq,spotanim,loc,flo}`, the models and animsets
 under `content/models/inferno/`, `content/maps/m35_83.jm2`, and the id lines in
