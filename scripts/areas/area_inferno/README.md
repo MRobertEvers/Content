@@ -37,6 +37,20 @@ rocks at (2268, 5364) and (2273, 5364). The glyph is removed outright; each
 rock swaps to its "Falling rock" twin, plays the collapse two ticks later and
 is cleared two ticks after that, as the animation ends.
 
+**Not everything in the alcove comes from the map.** The two rock formations
+flanking Zuk are not in square 35_83's loc data at all — Kronos places them when
+it builds the arena, along with removing the marker that stands where they go:
+
+```java
+forObj(30356, 2267, 5368, 1, remove)      // 9x4 multiloc marker, no geometry
+spawn(30346, 2268, 5364, 1, shape 10, angle 3)   // west of Zuk
+spawn(30345, 2273, 5364, 1, shape 10, angle 3)   // east of Zuk
+```
+
+Both share model 33038 (447 vertices, 841 faces). Miss them and the alcove has
+two flat dark quads where the rock should be — their footprints and nothing
+else — which reads as a rendering bug rather than as absent scenery.
+
 What is left is not an empty alcove. As the collapse clears, four low rocks
 appear either side of him — Kronos turns the standing loc at (2275, 5364) into
 its low form and places three more at (2267, 5364), (2267, 5366) and
@@ -53,6 +67,41 @@ running row, z 5361.
 Nothing is on the clock until Zuk is out. He then still holds fire until the
 glyph has completed its first run to one end, so the earliest possible shot is
 roughly twenty ticks after `::~zuk`.
+
+#### The cutscene
+
+`~inferno_cutscene` is the camera half of that opening, and it is a direct
+transcription of Kronos':
+
+```java
+moveCameraToLocation(2276, 5349, 1000, 10, 100)   // eye, arena mouth
+turnCameraToLocation(2271, 5365, 1000, 10, 100)   // aim, Zuk's alcove
+shakeCamera(0, 10); shakeCamera(1, 10); shakeCamera(2, 10)
+```
+
+Both heights are measured **up from the ground under that tile**, not in world
+space, and a `rate2` of 100 or more means cut rather than glide — which is why
+this one snaps into place. The three shakes are meant to compound: they are
+separate axes (x, y, z), not three attempts at the same thing.
+
+`p_delay` holds the player for the duration, so it is both the pacing and the
+lock; `cam_reset` at the end drops the shakes and hands the view back to the
+follow camera.
+
+Verified in `torirs` with `TORIRS_CAM_DEBUG=1`: the eye lands on world
+(2276, 5349) at ground−1000, aims at (2271, 5365), pitch clamps to the
+reference minimum of 128, yaw comes out 98, and axes 0–2 are live. Getting
+there needed three client fixes, all in `3draster` — see the note in this
+repo's client parity doc if the camera ever goes still again:
+
+- `CAM_MOVETO` / `CAM_LOOKAT` were parsed as three `u16`s. The wire is
+  `p1 x, p1 z, p2 height, p1 rate, p1 rate2` — also six bytes, so the length
+  assert passed and the fields simply slid: x and z fused into one number,
+  the height landed in z, and the two rates fused into the height.
+- The height was applied as an absolute world y instead of ground-relative,
+  and `CAM_LOOKAT` set yaw but never pitch.
+- `CAM_SHAKE` kept a single axis, so the three calls above overwrote each
+  other and only the last survived.
 
 ### The steady state
 
@@ -237,6 +286,13 @@ reference takes.
 - **No sounds.** Sound 163 (Jad's hit) and the rest have no `.synth` equivalent.
 - **Jad's Yt-HurKot healers are scripted but were not exercised in testing** —
   reaching them needs Jad taken to half health in combat.
+- **Level-1 locs do not draw here; place them on level 0.** The alcove's
+  level-1 tiles are the bridged kind, so OSRS renders that content on the plane
+  below. Ours does not: a loc placed literally on level 1 comes out as a flat
+  dark quad the size of its footprint. Kronos' coordinates for the flanking
+  rocks are level 1 and have to be dropped to level 0 on the way in. Proven one
+  variable at a time — west rock on level 0 drew as rock, east rock left on
+  level 1 stayed a quad, same build.
 - **`attackrange` is a config field, not a param.** Both readings compile and
   the param of the same name exists with a default of 0, so `npc_param` for it
   silently returns zero. That is why the Jal-MejJak barrage never fired — a hunt

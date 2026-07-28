@@ -116,6 +116,31 @@
 // for the opening cutscene and unlocks him after the dialogue, ten ticks in;
 // nothing he does is on the clock until then.
 ^inferno_zuk_spawn_delay = 10
+
+// The opening cutscene. Kronos pulls the camera back to the mouth of the arena
+// at (2276, 5349), turns it on Zuk at (2271, 5365), shakes it on all three axes
+// and holds for the dialogue before resetting:
+//
+//   moveCameraToLocation(2276, 5349, 1000, 10, 100)
+//   turnCameraToLocation(2271, 5365, 1000, 10, 100)
+//   shakeCamera(0..2, 10)
+//
+// The player is held for the same span, which is what p_delay does here — it
+// suspends the script and leaves them unable to act, so it is both the pacing
+// and the lock.
+^inferno_cam_from = 0_35_83_36_37
+^inferno_cam_to = 0_35_83_31_53
+^inferno_cam_height = 1000
+^inferno_cam_rate = 10
+^inferno_cam_rate2 = 100
+// Shake per axis. Kronos passes an intensity of 10; jitter and frequency follow
+// the shape the other ported cutscenes use.
+^inferno_shake_jitter = 6
+^inferno_shake_amplitude = 10
+^inferno_shake_frequency = 2
+// How long the camera stays on him. Kronos delays 1 before the dialogue and 9
+// after it, then resets.
+^inferno_cutscene_ticks = 10
 // The glyph waits this many ticks at each end before turning around.
 ^inferno_glyph_pause = 4
 

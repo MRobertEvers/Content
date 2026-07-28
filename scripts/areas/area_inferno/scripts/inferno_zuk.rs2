@@ -48,6 +48,33 @@ mes("TzKal-Zuk stirs.");
 // start rather than appearing out of nowhere on the first hitsplat. After the
 // announcement, so the fight reads in the order it happens.
 ~inferno_report_health("TzKal-Zuk", npc_stat(hitpoints));
+// Last, because it holds the player for ten ticks. Everything it wants to show
+// — Zuk's spawn animation, the seal coming down, the glyph dropping clear — is
+// already queued and plays out underneath it.
+~inferno_cutscene;
+
+/**
+ * The opening: the camera pulls back to the mouth of the arena, turns on Zuk
+ * and shakes while he tears his way out, then hands control back.
+ *
+ * `p_delay` is the lock as well as the pacing — it suspends this script and
+ * leaves the player unable to act for the duration, which is what Kronos gets
+ * from locking them explicitly.
+ *
+ * Kronos plays the line as dialogue from TzHaar-Ket-Rak (npc 7690, animation
+ * 615). Nothing of him is ported — he is not in the arena and his chathead is
+ * not in the export — so it is a game message here rather than a talking head.
+ */
+[proc,inferno_cutscene]
+cam_moveto(^inferno_cam_from, ^inferno_cam_height, ^inferno_cam_rate, ^inferno_cam_rate2);
+cam_lookat(^inferno_cam_to, ^inferno_cam_height, ^inferno_cam_rate, ^inferno_cam_rate2);
+cam_shake(0, ^inferno_shake_jitter, ^inferno_shake_amplitude, ^inferno_shake_frequency);
+cam_shake(1, ^inferno_shake_jitter, ^inferno_shake_amplitude, ^inferno_shake_frequency);
+cam_shake(2, ^inferno_shake_jitter, ^inferno_shake_amplitude, ^inferno_shake_frequency);
+mes("Oh no! TzKal-Zuk's prison is breaking down. This not meant to have happened.");
+mes("There's nothing I can do for you now JalYt!");
+p_delay(^inferno_cutscene_ticks);
+cam_reset;
 
 /**
  * Take one piece of the seal down. Idempotent, because a second ::~zuk finds
