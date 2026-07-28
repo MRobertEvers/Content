@@ -56,16 +56,28 @@
 ^inferno_rubble_angle_west = 1
 ^inferno_rubble_angle_east = 3
 
-// One piece of the alcove is a multiloc in the source cache: loc 30356 is a
-// nine-by-four marker with no geometry of its own that shows loc 30331 while
-// varbit 5652 is 0 and nothing once it is set. Rev 254 has no multiloc at all,
-// so the marker exports invisible and its rock never appears — the one hole in
-// an otherwise complete square, and a conspicuous one at this size.
+// The rocks that flank Zuk. These are not in the square's loc data at all —
+// Kronos places them when it builds the arena, on LEVEL 1, one either side of
+// him, and takes down the nine-by-four marker at (2267, 5368) at the same time:
 //
-// With no varbit to switch on, the default form is simply placed: our Zuk never
-// puts 5652 up, so the rock is always the right thing to be showing.
-^inferno_cliff_coord = 1_35_83_27_56
-^inferno_cliff_angle = 0
+//   forObj(30356, 2267, 5368, 1, remove)
+//   spawn(30346, 2268, 5364, 1, shape 10, angle 3)
+//   spawn(30345, 2273, 5364, 1, shape 10, angle 3)
+//
+// The marker is a multiloc (varbit 5652) with no geometry of its own, which is
+// why it exports invisible; removing it is what Kronos does with it anyway, so
+// nothing is lost by not being able to express the switch.
+//
+// The two rocks go down on level 0 here, not on Kronos' level 1. The alcove's
+// level-1 tiles are the bridged kind, so OSRS draws that content on the plane
+// below; ours does not, and a rock placed literally on level 1 renders as a
+// flat dark quad where its footprint is and nothing else. Proven one variable
+// at a time: with the west rock moved to level 0 and the east one left on 1,
+// the west drew as rock and the east stayed a quad.
+^inferno_flank_marker_coord = 1_35_83_27_56
+^inferno_flank_coord_west = 0_35_83_28_52
+^inferno_flank_coord_east = 0_35_83_33_52
+^inferno_flank_angle = 3
 // Kronos' collapse timing: swap to the "Falling rock" twin, let go two ticks
 // later, clear two ticks after that. The second gap is not arbitrary — the
 // collapse seq runs 60 client cycles, which is exactly two server ticks, so

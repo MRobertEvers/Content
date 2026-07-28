@@ -53,6 +53,26 @@ name=Roof
 model=inferno_locmodel_33032
 active=yes
 
+[inferno_loc_30345]
+model=inferno_locmodel_33038
+width=5
+length=2
+blockwalk=no
+blockrange=no
+active=no
+hillskew=yes
+sharelight=yes
+
+[inferno_loc_30346]
+model=inferno_locmodel_33038
+width=5
+length=2
+blockwalk=no
+blockrange=no
+active=no
+hillskew=yes
+sharelight=yes
+
 [inferno_loc_6926]
 model=inferno_locmodel_6932
 model2=inferno_locmodel_15553
