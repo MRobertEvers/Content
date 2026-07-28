@@ -1,0 +1,128 @@
+// Dragon claws — "Slice and Dice". Four hits for 50% of the bar.
+//
+// Only the *first* connecting hit is rolled. Everything after it is arithmetic
+// on that hit, which is the whole character of the weapon: it is not four
+// chances to hit, it is one chance that pays out four times. The accuracy roll
+// is retried at most four times, and where it first lands decides the shape:
+//
+//   1st connects   d, d/2, d/4, d/4      (the classic 4-2-1-1)
+//   2nd connects   0, d, d/2, d/2
+//   3rd connects   0, 0, d, d            capped at 75% of max
+//   4th connects   0, 0, 0, d            rolled against 150% of max
+//   none connect   0, 0, 1, 1            a consolation two damage
+//
+// Ported from Kronos' DragonClaws.java, which is the only source that states
+// the arithmetic rather than describing it. Two details from there that the
+// wiki does not give: every roll gets a 25% accuracy boost, and the minimum
+// damage floor is 4 rather than 0 — anything lower produces the stray zeros the
+// weapon is not supposed to roll. One time in six the floor is dropped back to
+// 4 outright, which is what puts the occasional low first hit in the spread.
+// The body animation is the native `claws_punch`, not the OSRS spec animation
+// that ships with the weapon. That one cannot be used here: it is rigged to
+// OSRS framemap 0, a 245-transform skeleton addressing vertex labels up to 217,
+// while a rev-254 player model only carries labels up to about 72. Played on
+// this rig most of its transforms match nothing, and an ORIGIN transform that
+// matches nothing falls back to using the raw frame value as the pivot — so the
+// model gets rotated around a point in space instead of a joint, which is the
+// stretching it produced. The rigs are different skeletons; there is no
+// correspondence to remap through.
+//
+// The spec's *spotanim* does port cleanly and is kept: a spotanim model is
+// standalone and rigged to its own framemap, which travels with it.
+[label,pvm_dragon_claws_sa]
+~set_sa_vars(oc_param(inv_getobj(worn, ^wearpos_rhand), sa_energy));
+anim(claws_punch, 0);
+spotanim_pl(dragon_claws_spec_spot, 96, 0);
+sound_synth(impale, 0, 0);
+npc_anim(npc_param(defend_anim), 20);
+
+def_int $maxhit = %com_maxhit;
+def_int $max_dealt = npc_param(max_dealt);
+
+// The floor. Kronos rolls a die every spec for it, so a first hit far below
+// half max is uncommon but not impossible.
+def_int $minhit = max(4, calc($maxhit / 2));
+if (random(6) = 0) {
+    $minhit = 4;
+}
+
+def_int $hit1 = 0;
+def_int $hit2 = 0;
+def_int $hit3 = 0;
+def_int $hit4 = 0;
+
+if (~pvm_dragon_claws_roll = true) {
+    // 4-2-1-1. The fourth hit picks up the odd point the halving dropped, so
+    // hits 2..4 always sum to exactly hit 1.
+    $hit1 = ~pvm_dragon_claws_damage($minhit, $maxhit, $max_dealt);
+    $hit2 = calc($hit1 / 2);
+    $hit3 = calc($hit2 / 2);
+    $hit4 = add($hit3, calc($hit2 % 2));
+} else if (~pvm_dragon_claws_roll = true) {
+    // 0-4-2-2.
+    $hit2 = ~pvm_dragon_claws_damage($minhit, $maxhit, $max_dealt);
+    $hit3 = calc($hit2 / 2);
+    $hit4 = $hit3;
+} else if (~pvm_dragon_claws_roll = true) {
+    // 0-0-3-3, both capped at three quarters of max.
+    $hit3 = ~pvm_dragon_claws_damage(0, scale(75, 100, $maxhit), $max_dealt);
+    $hit4 = $hit3;
+} else if (~pvm_dragon_claws_roll = true) {
+    // 0-0-0-5. The consolation for three misses is a roll against half again
+    // the normal maximum.
+    $hit4 = ~pvm_dragon_claws_damage(0, scale(150, 100, $maxhit), $max_dealt);
+} else {
+    // Four misses. Not quite nothing: the claws still scratch for one apiece.
+    $hit3 = 1;
+    $hit4 = 1;
+}
+
+// Hits one and two land now, three and four on the following tick — the two
+// pairs of hitsplats the weapon is recognised by.
+~pvm_dragon_claws_apply($hit1);
+~pvm_dragon_claws_apply($hit2);
+~npc_retaliate(0);
+npc_queue(2, $hit1, 0);
+npc_queue(2, $hit2, 0);
+npc_queue(2, $hit3, 1);
+npc_queue(2, $hit4, 1);
+~pvm_dragon_claws_apply($hit3);
+~pvm_dragon_claws_apply($hit4);
+
+/**
+ * One accuracy roll, with the spec's 25% boost.
+ *
+ * Rolled against the npc's *slash* defence whatever the player's attack style,
+ * because the spec animation is a slash whichever style the claws were set to
+ * — the same reasoning the dragon dagger's spec uses.
+ */
+[proc,pvm_dragon_claws_roll]()(boolean)
+def_int $attackroll = scale(125, 100, ~player_attack_roll_specific(%damagetype));
+def_int $defenceroll = ~npc_defence_roll_specific(^slash_style);
+if (randominc($attackroll) > randominc($defenceroll)) {
+    return(true);
+}
+return(false);
+
+/** A damage roll between $min and $max, clamped to what the npc allows. */
+[proc,pvm_dragon_claws_damage](int $min, int $max, int $max_dealt)(int)
+def_int $capped = min($max, $max_dealt);
+if ($capped <= $min) {
+    return(max($capped, 0));
+}
+return(add($min, random(add(sub($capped, $min), 1))));
+
+/**
+ * Experience and hero points for one of the four hits.
+ *
+ * Kept separate from the damage itself because the hitpoints check has to see
+ * the npc as it is *now*: four hits queued on the same tick would otherwise
+ * each award experience for damage the npc no longer has to give.
+ */
+[proc,pvm_dragon_claws_apply](int $damage)
+if ($damage <= 0) {
+    return;
+}
+def_int $damage_capped = min($damage, npc_stat(hitpoints));
+~give_combat_experience(%damagestyle, $damage_capped, %npc_combat_xp_multiplier);
+npc_heropoints($damage_capped);

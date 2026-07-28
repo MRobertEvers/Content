@@ -1,0 +1,30 @@
+// A melee player holding dragon claws with a full special bar, for testing
+// "Slice and Dice" without first grinding to 60 Attack and finding a pair.
+//
+// The worn slots it fills are overwritten, not swapped — whatever was in them
+// is gone. It is a cheat; bank anything that matters first.
+
+[debugproc,dclaws]
+if_close;
+if (p_finduid(uid) = false) {
+    @please_finish;
+    return;
+}
+
+def_int $max_xp = 130344310;
+stat_advance(attack, $max_xp);
+stat_advance(defence, $max_xp);
+stat_advance(strength, $max_xp);
+stat_advance(hitpoints, $max_xp);
+
+inv_setslot(worn, ^wearpos_rhand, dragon_claws, 1);
+inv_setslot(worn, ^wearpos_torso, rune_platebody, 1);
+inv_setslot(worn, ^wearpos_legs, rune_platelegs, 1);
+inv_setslot(worn, ^wearpos_hat, rune_full_helm, 1);
+~update_all(null);
+
+// A full bar, so the first attack after this can be the spec. The scale is
+// 0..1000 and the claws cost 500, so this is two specs' worth.
+%sa_energy = ^sa_max_energy;
+
+mes("Dragon claws equipped, special attack bar full.");

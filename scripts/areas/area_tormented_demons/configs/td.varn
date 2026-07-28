@@ -42,3 +42,10 @@
 
 // map_clock stamp: when the warded-style overhead needs saying again.
 [td_say_clock]
+
+// Set when the phase ends — by a fire bomb or by a prayer swap — to say the
+// attack style must be re-picked before the next swing. A flag rather than
+// blanking %td_style, because the picker reads the old style to avoid choosing
+// it twice running: blanking it would let the same style come back and the
+// phase change would be invisible.
+[td_restyle]

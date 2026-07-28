@@ -3,7 +3,7 @@
 // The fight is four clocks running at once, all read off the demon every tick
 // from ai_timer:
 //
-//   attack      every 6 ticks, in whichever of the three styles it picked
+//   attack      every 6 ticks, in the one style this phase picked
 //   defenceless 30 ticks in, the flames go out and it stops defending
 //   fire bomb   every 60 ticks, two bombs and a forced style change
 //   prayer      every 150 damage taken, it swaps overhead and stands still 6
@@ -130,7 +130,7 @@ queue*(td_bomb_land, ^td_bomb_fuse)($second);
 %td_defenceless = 0;
 %td_defenceless_clock = add(map_clock, ^td_defenceless_delay);
 %td_bomb_clock = add(map_clock, ^td_bomb_interval);
-%td_style = ^td_style_none;
+%td_restyle = 1;
 
 /**
  * A bomb going off, two ticks after it was marked.
@@ -153,20 +153,18 @@ if (coordx(coord) < sub(coordx($tile), ^td_bomb_splash) |
     coordz(coord) > add(coordz($tile), ^td_bomb_splash)) {
     return;
 }
-spotanim_pl(td_fireball_large_impact, 0, 0);
+spotanim_pl(td_explosion_fire_gfx, 0, 0);
 ~damage_self(randominc(^td_bomb_maxhit));
 
 // ---- attacks -------------------------------------------------------------
 
 /**
- * Melee. Used whenever the demon is standing next to the player — the style is
- * chosen by where it is, not by a roll, which is what makes backing away from
- * it a real decision rather than a stat check.
+ * Melee. Only thrown when melee is the phase's style *and* the demon has walked
+ * into range — see the picker in td_tick.
  */
 [proc,td_attack_melee]
 npc_anim(td_melee, 0);
 spotanim_npc(td_melee_gfx, 0, 0);
-%td_style = ^td_style_melee;
 if (~headicon_exists(^headicon_prayer_protectfrommelee) = false) {
     queue(combat_damage_player, 0, randominc(^td_maxhit));
 }
@@ -176,12 +174,12 @@ queue*(playerhit_n_retaliate, 0)(npc_uid);
 /** Magic: the big slow fireball. */
 [proc,td_attack_magic]
 npc_anim(td_firey_balls, 0);
-%td_style = ^td_style_magic;
 def_int $duration = ~player_projectile(
     npc_coord, coord, uid, td_fireball_large_proj,
     ^td_proj_start_height, ^td_proj_end_height,
     ^td_proj_delay, ^td_proj_duration, ^td_proj_peak, 0, ^td_proj_arc);
 anim(%com_defendanim, $duration);
+spotanim_pl(td_fireball_large_impact, 0, $duration);
 if (~headicon_exists(^headicon_prayer_protectfrommagic) = false) {
     queue(combat_damage_player, calc($duration / 30), randominc(^td_maxhit));
 }
@@ -195,12 +193,12 @@ queue*(playerhit_n_retaliate, calc($duration / 30))(npc_uid);
  */
 [proc,td_attack_ranged]
 npc_anim(td_spare_ribs, 0);
-%td_style = ^td_style_ranged;
 def_int $duration = ~player_projectile(
     npc_coord, coord, uid, td_fireball_proj,
     ^td_proj_start_height, ^td_proj_end_height,
     ^td_proj_delay, ^td_proj_duration, ^td_proj_peak, 0, ^td_proj_arc);
 anim(%com_defendanim, $duration);
+spotanim_pl(td_fireball_impact, 0, $duration);
 if (~headicon_exists(^headicon_prayer_protectfromrange) = false) {
     queue(combat_damage_player, calc($duration / 30), randominc(^td_maxhit));
 }
@@ -256,30 +254,58 @@ if (%td_defenceless ! 1 & %td_defenceless_clock <= map_clock) {
 if (%npc_action_delay > map_clock) {
     return;
 }
+// One style for the whole phase. It is picked when the phase opens and then
+// does not change again until the phase ends, which is the point: the player
+// sets an overhead once and it stays right until the demon visibly resets.
+// Cycling per attack would make the overhead unholdable and the prayer swap
+// meaningless.
+if (%td_restyle = 1 | %td_style = ^td_style_none) {
+    ~td_pick_style;
+}
+
+// It committed to melee, so it has to be standing next to the player to throw
+// one. The hunt walks it in; until it arrives it does not attack, rather than
+// quietly substituting a style the player is not praying against.
+//
+// Checked before the cooldown is spent, not after: burning the swing on a tick
+// it was always going to walk through would leave it idling for most of an
+// attack after it finally arrived.
+if (%td_style = ^td_style_melee & npc_range(coord) > 1) {
+    return;
+}
+
 %npc_action_delay = add(map_clock, npc_param(attackrate));
 npc_facesquare(coord);
 
-// Adjacent means melee. Otherwise it alternates magic and ranged rather than
-// rolling: the fight is built so a player who was paying attention knows which
-// of the two is coming next, and a fresh roll every time would take that away.
-if (npc_range(coord) <= 1) {
+if (%td_style = ^td_style_melee) {
     ~td_attack_melee;
     return;
 }
 if (%td_style = ^td_style_magic) {
-    ~td_attack_ranged;
-    return;
-}
-if (%td_style = ^td_style_ranged) {
     ~td_attack_magic;
     return;
 }
-// No style yet — a fresh spawn, or the tick after a bomb. Either is fair.
-if (random(2) = 0) {
-    ~td_attack_magic;
-} else {
-    ~td_attack_ranged;
+~td_attack_ranged;
+
+/**
+ * Choose the style for the phase that is just opening.
+ *
+ * Never the style the last phase used: repeating it would leave the player's
+ * overhead already correct and the phase change invisible, and the whole shape
+ * of the fight is that a reset means "look again".
+ */
+[proc,td_pick_style]
+def_int $previous = %td_style;
+def_int $pick = $previous;
+while ($pick = $previous) {
+    switch_int (random(3)) {
+        case 0 : $pick = ^td_style_melee;
+        case 1 : $pick = ^td_style_magic;
+        case default : $pick = ^td_style_ranged;
+    }
 }
+%td_style = $pick;
+%td_restyle = 0;
 
 // ---- taking damage -------------------------------------------------------
 
@@ -330,6 +356,12 @@ if (%td_damage_since_swap >= ^td_prayer_swap_damage & %td_last_hit_style ! ^td_s
     %td_prayer = %td_last_hit_style;
     %td_stunned_until = add(map_clock, ^td_prayer_swap_pause);
     %npc_action_delay = add(map_clock, ^td_prayer_swap_pause);
+    // The swap ends the phase as well as changing the overhead — the six ticks
+    // it spends standing still are the tell that a new style is coming, and a
+    // demon that carried on with the old one would waste that warning. This is
+    // the other half of "one style per 150 hitpoints": the demon changes what
+    // it prays against and what it attacks with at the same moment.
+    %td_restyle = 1;
     npc_anim(td_defend, 0);
     spotanim_npc(td_shield_restore_gfx, 0, 0);
     ~td_declare_prayer;
