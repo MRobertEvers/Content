@@ -68,15 +68,20 @@
 // why it exports invisible; removing it is what Kronos does with it anyway, so
 // nothing is lost by not being able to express the switch.
 //
-// The two rocks go down on level 0 here, not on Kronos' level 1. The alcove's
-// level-1 tiles are the bridged kind, so OSRS draws that content on the plane
-// below; ours does not, and a rock placed literally on level 1 renders as a
-// flat dark quad where its footprint is and nothing else. Proven one variable
-// at a time: with the west rock moved to level 0 and the east one left on 1,
-// the west drew as rock and the east stayed a quad.
+// The two formations are STATIC level-1 locs in m35_83.jm2, injected by the
+// exporter (`--maploc 35_83,1,28,52,...` in the README command) — the script
+// does not place them. Dynamic placement cannot work on this revision: a zone
+// update carries no plane, so a level-1 loc_add lands on the player's own
+// level — which is why the earlier "level 1 renders as a dark quad" experiment
+// misled; static level-1 locs render fine (the pit's rim ring is 113 of them).
+// And level 0 is not available: rotated they are 2x5 and their south ends
+// cover the standing seal rocks' own tiles, so adding them there replaces the
+// rocks and kills the collapse animation.
+//
+// These constants only record where they stand; nothing reads them.
 ^inferno_flank_marker_coord = 1_35_83_27_56
-^inferno_flank_coord_west = 0_35_83_28_52
-^inferno_flank_coord_east = 0_35_83_33_52
+^inferno_flank_coord_west = 1_35_83_28_52
+^inferno_flank_coord_east = 1_35_83_33_52
 ^inferno_flank_angle = 3
 // Kronos' collapse timing: swap to the "Falling rock" twin, let go two ticks
 // later, clear two ticks after that. The second gap is not arbitrary — the

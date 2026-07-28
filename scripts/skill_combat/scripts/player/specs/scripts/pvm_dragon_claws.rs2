@@ -17,21 +17,31 @@
 // damage floor is 4 rather than 0 — anything lower produces the stray zeros the
 // weapon is not supposed to roll. One time in six the floor is dropped back to
 // 4 outright, which is what puts the occasional low first hit in the spread.
-// The body animation is the native `claws_punch`, not the OSRS spec animation
-// that ships with the weapon. That one cannot be used here: it is rigged to
-// OSRS framemap 0, a 245-transform skeleton addressing vertex labels up to 217,
-// while a rev-254 player model only carries labels up to about 72. Played on
-// this rig most of its transforms match nothing, and an ORIGIN transform that
-// matches nothing falls back to using the raw frame value as the pivot — so the
-// model gets rotated around a point in space instead of a joint, which is the
-// stretching it produced. The rigs are different skeletons; there is no
-// correspondence to remap through.
+// The body animation is native, not the OSRS spec animation that ships with the
+// weapon. That one cannot be used here: it is rigged to OSRS framemap 0, a
+// 245-transform skeleton addressing vertex labels up to 217, while a rev-254
+// player model only carries labels up to about 72. Played on this rig most of
+// its transforms match nothing, and an ORIGIN transform that matches nothing
+// falls back to using the raw frame value as the pivot — so the model gets
+// rotated around a point in space instead of a joint, which is the stretching
+// it produced. The rigs are different skeletons; there is no correspondence to
+// remap through.
 //
 // The spec's *spotanim* does port cleanly and is kept: a spotanim model is
 // standalone and rigged to its own framemap, which travels with it.
+//
+// `impale` and not the weapon's own `claws_punch`, for the same reason every
+// other spec here uses a dedicated animation. Player.playAnimation only accepts
+// an animation whose priority is >= the one already playing, and an ordinary
+// attack anim carries the default priority of 5 — so mid-combat it loses to
+// whatever priority-6 animation the combat loop last set, and the spec plays no
+// body animation at all. spotanim() has no such gate, which is why the claw
+// slash still appeared over a motionless player. The spec animations (impale,
+// puncture, chainhit, cleave) are all priority 6 precisely so they cannot be
+// suppressed.
 [label,pvm_dragon_claws_sa]
 ~set_sa_vars(oc_param(inv_getobj(worn, ^wearpos_rhand), sa_energy));
-anim(claws_punch, 0);
+anim(impale, 0);
 spotanim_pl(dragon_claws_spec_spot, 96, 0);
 sound_synth(impale, 0, 0);
 npc_anim(npc_param(defend_anim), 20);

@@ -16,13 +16,16 @@ if (p_finduid(uid) = false) {
 }
 ~inferno_despawn_all(^inferno_zuk_coord);
 p_teleport(^inferno_player_coord);
-// The rocks either side of him, which the square's loc data does not carry at
-// all — Kronos puts them in when it builds the arena and drops the marker that
-// stands where they go. Level 1, which is why they read as the tall formations
-// flanking him rather than as anything on the floor.
-~inferno_break_seal(^inferno_flank_marker_coord, inferno_loc_30356);
-loc_add(^inferno_flank_coord_west, inferno_loc_30346, ^inferno_flank_angle, centrepiece_straight, ^inferno_npc_duration);
-loc_add(^inferno_flank_coord_east, inferno_loc_30345, ^inferno_flank_angle, centrepiece_straight, ^inferno_npc_duration);
+// The tall crag formations either side of him are NOT placed here. They are
+// static level-1 locs, injected into m35_83.jm2 by the exporter (`--maploc` in
+// the README's command) — where Kronos spawns them dynamically on level 1.
+// They cannot be spawned from a script on this revision: a zone update carries
+// no plane, so a level-1 add lands on whatever level the player is standing
+// on. And they cannot go on level 0: rotated they are 2x5, their south ends
+// cover the very tiles the standing seal rocks occupy, and a loc_add there
+// replaces the rock — which is what silently broke the collapse animation the
+// first time (loc_find stopped matching, so the falling-rock change never
+// fired and the formations just popped in).
 // Break the seal. Zuk comes out of the wall, so none of what was holding him
 // in is still standing once the fight is on. The glyph goes outright; the two
 // rocks are given a collapse first — each swaps to its "Falling rock" twin
