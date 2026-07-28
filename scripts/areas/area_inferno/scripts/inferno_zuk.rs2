@@ -98,13 +98,23 @@ if (loc_find($coord, $standing) = true) {
     loc_change($falling, ^inferno_npc_duration);
 }
 
-// The rocks let go, and are cleared as the animation finishes.
+// The rocks let go, and are cleared as the animation finishes. The chat line
+// doubles as the harness's proof the chain ran: it only prints when the
+// falling-rock variants are actually standing there to animate, which is
+// exactly what the flank-formation loc_adds silently broke once — they
+// replaced the standing rocks before the collapse could find them.
 [queue,inferno_seal_anim]
+if (loc_find(^inferno_rock_coord_west, inferno_loc_30344) = true) {
+    mes("The rocks holding TzKal-Zuk break loose!");
+}
 ~inferno_anim_rock(^inferno_rock_coord_west, inferno_loc_30344);
 ~inferno_anim_rock(^inferno_rock_coord_east, inferno_loc_30343);
 queue(inferno_seal_clear, ^inferno_seal_clear_delay, 0);
 
 [queue,inferno_seal_clear]
+if (loc_find(^inferno_rock_coord_west, inferno_loc_30344) = true) {
+    mes("The seal crumbles.");
+}
 ~inferno_break_seal(^inferno_rock_coord_west, inferno_loc_30344);
 ~inferno_break_seal(^inferno_rock_coord_east, inferno_loc_30343);
 // What the collapse leaves behind. The rocks do not simply vanish: one of the
