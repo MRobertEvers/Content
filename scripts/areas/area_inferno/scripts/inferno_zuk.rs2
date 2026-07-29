@@ -114,10 +114,11 @@ if (loc_find(^inferno_glyph_loc_coord, inferno_loc_30338) = false) {
 if (loc_find(^inferno_rubble_change_coord, inferno_loc_30339) = true) {
     loc_change(inferno_loc_30332, ^inferno_loc_duration);
 }
-// The rubble pieces change back into the standing wall rocks they came from.
-~inferno_rubble(^inferno_rubble_coord_west_near, inferno_loc_30340, inferno_loc_30333);
-~inferno_rubble(^inferno_rubble_coord_west_far, inferno_loc_30342, inferno_loc_30324);
-~inferno_rubble(^inferno_rubble_coord_east_far, inferno_loc_30341, inferno_loc_30334);
+// The rubble pieces swap back into the standing wall rocks they came from, at
+// the statics' own map angle — the fight turned the west pair 180.
+~inferno_loc_swap(^inferno_rubble_coord_west_near, inferno_loc_30340, inferno_loc_30333, ^inferno_wall_angle);
+~inferno_loc_swap(^inferno_rubble_coord_west_far, inferno_loc_30342, inferno_loc_30324, ^inferno_wall_angle);
+~inferno_loc_swap(^inferno_rubble_coord_east_far, inferno_loc_30341, inferno_loc_30334, ^inferno_wall_angle);
 
 /**
  * Take one piece of the seal down. Idempotent, because a second ::~zuk finds
@@ -160,9 +161,9 @@ if (loc_find(^inferno_rock_coord_west, inferno_loc_30344) = true) {
 if (loc_find(^inferno_rubble_change_coord, inferno_loc_30332) = true) {
     loc_change(inferno_loc_30339, ^inferno_loc_duration);
 }
-~inferno_rubble(^inferno_rubble_coord_west_near, inferno_loc_30333, inferno_loc_30340);
-~inferno_rubble(^inferno_rubble_coord_west_far, inferno_loc_30324, inferno_loc_30342);
-~inferno_rubble(^inferno_rubble_coord_east_far, inferno_loc_30334, inferno_loc_30341);
+~inferno_loc_swap(^inferno_rubble_coord_west_near, inferno_loc_30333, inferno_loc_30340, ^inferno_rubble_angle_west);
+~inferno_loc_swap(^inferno_rubble_coord_west_far, inferno_loc_30324, inferno_loc_30342, ^inferno_rubble_angle_west);
+~inferno_loc_swap(^inferno_rubble_coord_east_far, inferno_loc_30334, inferno_loc_30341, ^inferno_rubble_angle_east);
 
 [ai_queue6,inferno_zuk]
 if (loc_find(^inferno_rock_coord_west, inferno_loc_30344) = true) {
@@ -191,19 +192,25 @@ while (huntnext = true) {
 }
 
 /**
- * Drop one piece of low rock, by CHANGING the standing wall piece that lives
- * on that tile — never by adding over it. The engine only re-transmits a
- * covered static... never: a dynamic's removal reaches clients as a bare
- * LOC_DEL, which empties the layer the add had replaced, and the wall piece
- * stays invisible to everyone present until they relog. A changed static, by
- * contrast, reverts with a LocAddChange in both directions, and changing it
- * back to its own id makes it a plain static again — the engine's own
- * first-class idiom for exactly this.
+ * Swap one loc for another on the same tile: delete what stands there, add the
+ * replacement in the same tick.
+ *
+ * loc_change would be simpler, but a change keeps the loc's angle and Kronos
+ * turns the west rubble 180 degrees from the wall pieces it replaces (spawn
+ * angle 1 against the statics' 3) — an angle change is only expressible as
+ * del+add. The two ops land in one tick, so the client sees a single
+ * LocDel+LocAddChange pair and the layer is never left empty; the reset swaps
+ * back with the statics' own angle, so nothing ends up mirrored in either
+ * state. Deleting a static hides it with no expiry (^inferno_loc_duration),
+ * and the swap-back stands a dynamic copy in its place — the same pattern the
+ * standing seal rocks use.
  */
-[proc,inferno_rubble](coord $coord, loc $standing, loc $rubble)
-if (loc_find($coord, $standing) = true) {
-    loc_change($rubble, ^inferno_loc_duration);
+[proc,inferno_loc_swap](coord $coord, loc $from, loc $to, int $angle)
+if (loc_find($coord, $from) = false) {
+    return;
 }
+loc_del(^inferno_loc_duration);
+loc_add($coord, $to, $angle, centrepiece_straight, ^inferno_loc_duration);
 
 [proc,inferno_anim_rock](coord $coord, loc $loc)
 if (loc_find($coord, $loc) = true) {

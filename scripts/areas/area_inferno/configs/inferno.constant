@@ -67,6 +67,9 @@
 ^inferno_rubble_coord_east_far = 0_35_83_35_54
 ^inferno_rubble_angle_west = 1
 ^inferno_rubble_angle_east = 3
+// Every wall/rock static in the alcove sits at map angle 3; the swaps restore
+// it explicitly because the west rubble does not share it.
+^inferno_wall_angle = 3
 
 // The rocks that flank Zuk. These are not in the square's loc data at all —
 // Kronos places them when it builds the arena, on LEVEL 1, one either side of
