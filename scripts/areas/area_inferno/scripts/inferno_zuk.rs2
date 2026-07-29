@@ -286,6 +286,15 @@ if ($bad = 0) {
 }
 mes("SEAL BAD: <tostring($bad)> problems");
 
+/** ::~rockangles — just the two standing rocks, with angles, nothing else. */
+[debugproc,rockangles]
+if_close;
+if (p_finduid(uid) = false) {
+    return;
+}
+~inferno_sealcheck_one("standing W 30337", ^inferno_rock_coord_west, inferno_loc_30337);
+~inferno_sealcheck_one("standing E 30336", ^inferno_rock_coord_east, inferno_loc_30336);
+
 /** ::~sealreset — run the FIGHT->SEALED restore by itself. */
 [debugproc,sealreset]
 if_close;
@@ -320,7 +329,7 @@ if (p_finduid(uid) = false) {
 
 [proc,inferno_sealcheck_one](string $label, coord $coord, loc $loc)
 if (loc_find($coord, $loc) = true) {
-    mes("<$label>: present");
+    mes("<$label>: present angle=<tostring(loc_angle)>");
     return;
 }
 mes("<$label>: absent");
