@@ -103,13 +103,16 @@
 // Kronos' collapse timing: swap to the "Falling rock" twin, let go two ticks
 // later, clear two ticks after that. The second gap is not arbitrary — the
 // collapse seq runs 60 client cycles, which is exactly two server ticks, so
-// the rock disappears on the frame the animation finishes on.
-//
-// The clear reads as one less than the gap it produces because it is queued
-// from inside a queue script, which has already had its decrement pass for the
-// tick. One and two both land two ticks after the animation starts.
+// the rock disappears on the frame the animation finishes on. Both steps are
+// scheduled flat from the start of the fight, on Zuk's own npc queues: player
+// queues do not run while the cutscene's p_delay holds the player, and on
+// them the whole collapse piles up invisibly at the moment control returns.
 ^inferno_seal_anim_delay = 2
-^inferno_seal_clear_delay = 1
+^inferno_seal_anim_ticks = 2
+// Ticks the restored seal is on screen before the opening breaks it again —
+// ::~zuk resets the arena first, and a reset that is torn down on the same
+// tick it lands would never be seen.
+^inferno_reset_delay = 2
 
 // Where ::~zuk drops the player in: close enough that Zuk and the glyph are both
 // on screen, and lined up behind the glyph's starting column so the first shot

@@ -91,6 +91,17 @@ separate axes (x, y, z), not three attempts at the same thing.
 lock; `cam_reset` at the end drops the shakes and hands the view back to the
 follow camera.
 
+**Nothing time-sensitive may ride the player's queues during it.** The engine
+only runs a player's normal queues when the player `canAccess()`, and p_delay
+holds that false for the whole cutscene — a queue scheduled for two ticks in
+counts down on time but *runs* the moment the cutscene ends. The seal collapse
+shipped that way first: topple, clear, rubble and crag formations all landed in
+one invisible pile as control returned, which read as "the rocks never fall,
+they are just suddenly on the ground". Every step of the collapse therefore
+rides **Zuk's npc queues** (`ai_queue5`/`ai_queue6`), which never consult the
+player's state; their chat lines go through `~inferno_arena_mes`, because an
+npc queue has no active player and a bare `mes` there is a silent no-op.
+
 Verified in `torirs` with `TORIRS_CAM_DEBUG=1`: the eye lands on world
 (2276, 5349) at ground−1000, aims at (2271, 5365), pitch clamps to the
 reference minimum of 128, yaw comes out 98, and axes 0–2 are live. Getting

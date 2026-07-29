@@ -16,6 +16,14 @@ if (p_finduid(uid) = false) {
 }
 ~inferno_despawn_all(^inferno_zuk_coord);
 p_teleport(^inferno_player_coord);
+// Put the arena back to its sealed state and hold a beat before breaking it.
+// Without this, a second ::~zuk inside the loc-change duration finds the rocks
+// already down — nothing standing to topple — and the whole collapse silently
+// skips. The pause is there so the restored seal is actually on screen before
+// the opening tears it apart; reset and break on the same tick would be an
+// invisible round trip.
+~inferno_reset_seal;
+p_delay(^inferno_reset_delay);
 // The tall crag formations either side of him are NOT placed here — they go in
 // from [queue,inferno_seal_clear], on the tick the falling rocks are removed
 // and their tiles come free. See the constants file for the two orderings that
@@ -27,13 +35,18 @@ p_teleport(^inferno_player_coord);
 ~inferno_break_seal(^inferno_glyph_loc_coord, inferno_loc_30338);
 ~inferno_collapse_rock(^inferno_rock_coord_west, inferno_loc_30337, inferno_loc_30344);
 ~inferno_collapse_rock(^inferno_rock_coord_east, inferno_loc_30336, inferno_loc_30343);
-// Queued unconditionally, so a run that was interrupted mid-collapse still has
-// its leftover falling rocks cleared by the next ::~zuk.
-queue(inferno_seal_anim, ^inferno_seal_anim_delay, 0);
 // The glyph first, so Zuk's first tick already finds it. It goes in on the
 // seal row and drops to its own row over the opening ticks.
 npc_add(^inferno_glyph_spawn_coord, inferno_zuk_shield, ^inferno_npc_duration);
 npc_add(^inferno_zuk_coord, inferno_zuk, ^inferno_npc_duration);
+// The collapse rides Zuk's own queues, NOT the player's: the cutscene below
+// holds the player with p_delay, and the engine never runs a player's normal
+// queues while it is delayed (Player.processQueue gates on canAccess) — on
+// player queues the whole collapse piled up invisibly at the cutscene's end.
+// An npc queue never consults the player's state, and Zuk is active right
+// here, fresh from his npc_add.
+npc_queue(5, 0, ^inferno_seal_anim_delay);
+npc_queue(6, 0, add(^inferno_seal_anim_delay, ^inferno_seal_anim_ticks));
 // npc_add leaves the npc it made active, so the opening damage can be queued
 // straight onto him. It goes through ai_queue2 so the phase checks see it as
 // ordinary damage.
@@ -74,6 +87,36 @@ p_delay(^inferno_cutscene_ticks);
 cam_reset;
 
 /**
+ * Restore the seal to its pristine state: standing rocks and glyph wall back,
+ * crag formations, rubble and the low-rock change gone. Every branch is
+ * guarded, so it is a no-op on an arena that is already sealed.
+ *
+ * The standing rocks go back with a bare loc_add: their tiles may hold the
+ * falling variant (a run interrupted mid-collapse) or a crag formation (a
+ * finished one, anchored on the very same tiles), and loc_add replaces
+ * whatever owns the layer either way. Shapes and angles are the map's own —
+ * jm2 has all three pieces as shape 10 angle 3.
+ */
+[proc,inferno_reset_seal]
+if (loc_find(^inferno_rock_coord_west, inferno_loc_30337) = false) {
+    loc_add(^inferno_rock_coord_west, inferno_loc_30337, 3, centrepiece_straight, ^inferno_npc_duration);
+}
+if (loc_find(^inferno_rock_coord_east, inferno_loc_30336) = false) {
+    loc_add(^inferno_rock_coord_east, inferno_loc_30336, 3, centrepiece_straight, ^inferno_npc_duration);
+}
+if (loc_find(^inferno_glyph_loc_coord, inferno_loc_30338) = false) {
+    loc_add(^inferno_glyph_loc_coord, inferno_loc_30338, 3, centrepiece_straight, ^inferno_npc_duration);
+}
+// The low form goes back to the standing piece it was changed from.
+if (loc_find(^inferno_rubble_change_coord, inferno_loc_30339) = true) {
+    loc_change(inferno_loc_30332, ^inferno_npc_duration);
+}
+// The three added rubble pieces come out entirely.
+~inferno_break_seal(^inferno_rubble_coord_west_near, inferno_loc_30340);
+~inferno_break_seal(^inferno_rubble_coord_west_far, inferno_loc_30342);
+~inferno_break_seal(^inferno_rubble_coord_east_far, inferno_loc_30341);
+
+/**
  * Take one piece of the seal down. Idempotent, because a second ::~zuk finds
  * the loc already gone and there is nothing left to remove.
  */
@@ -92,22 +135,24 @@ if (loc_find($coord, $standing) = true) {
     loc_change($falling, ^inferno_npc_duration);
 }
 
-// The rocks let go, and are cleared as the animation finishes. The chat line
-// doubles as the harness's proof the chain ran: it only prints when the
-// falling-rock variants are actually standing there to animate, which is
-// exactly what the flank-formation loc_adds silently broke once — they
-// replaced the standing rocks before the collapse could find them.
-[queue,inferno_seal_anim]
+// The rocks let go, and are cleared as the animation finishes. Both steps ride
+// Zuk's ai_queues so they run DURING the cutscene — a player's normal queues
+// are gated on canAccess, and the cutscene's p_delay holds that false for ten
+// ticks, which silently parked the whole collapse at the moment control
+// returned. The chat line doubles as the harness's proof the chain ran: it
+// only prints when the falling-rock variants are actually standing there to
+// animate, which is exactly what the flank-formation loc_adds silently broke
+// once — they replaced the standing rocks before the collapse could find them.
+[ai_queue5,inferno_zuk]
 if (loc_find(^inferno_rock_coord_west, inferno_loc_30344) = true) {
-    mes("The rocks holding TzKal-Zuk break loose!");
+    ~inferno_arena_mes("The rocks holding TzKal-Zuk break loose!");
 }
 ~inferno_anim_rock(^inferno_rock_coord_west, inferno_loc_30344);
 ~inferno_anim_rock(^inferno_rock_coord_east, inferno_loc_30343);
-queue(inferno_seal_clear, ^inferno_seal_clear_delay, 0);
 
-[queue,inferno_seal_clear]
+[ai_queue6,inferno_zuk]
 if (loc_find(^inferno_rock_coord_west, inferno_loc_30344) = true) {
-    mes("The seal crumbles.");
+    ~inferno_arena_mes("The seal crumbles.");
 }
 ~inferno_break_seal(^inferno_rock_coord_west, inferno_loc_30344);
 ~inferno_break_seal(^inferno_rock_coord_east, inferno_loc_30343);
@@ -128,6 +173,19 @@ if (loc_find(^inferno_rubble_change_coord, inferno_loc_30332) = true) {
 ~inferno_rubble(^inferno_rubble_coord_east_far, inferno_loc_30341, ^inferno_rubble_angle_east);
 
 /**
+ * A chat line to everyone in the arena, from an npc script.
+ *
+ * An ai_queue runs with no active player, so a bare mes is a silent no-op —
+ * the same trap ~inferno_report_health works around, and the same huntall
+ * trick: borrow each nearby player just long enough to print to them.
+ */
+[proc,inferno_arena_mes](string $text)
+huntall(npc_coord, ^inferno_scan_range, ^vis_off);
+while (huntnext = true) {
+    mes($text);
+}
+
+/**
  * Drop one piece of low rock. Spawned rather than changed — these have nothing
  * standing in their place to begin with, they are only there once Zuk is out.
  */
@@ -137,6 +195,41 @@ loc_add($coord, $loc, $angle, centrepiece_straight, ^inferno_npc_duration);
 [proc,inferno_anim_rock](coord $coord, loc $loc)
 if (loc_find($coord, $loc) = true) {
     loc_anim(inferno_seal_collapse);
+}
+
+/**
+ * ::~sealanim — the collapse in isolation, on a loop, with nothing clearing it.
+ *
+ * The real opening gives the falling rock four ticks of life and the topple two
+ * of them, which makes "did the animation actually render" impossible to judge
+ * by eye or to catch with a frame capture. This pins the falling variant in
+ * place and re-fires the animation every few ticks: if LOC_ANIM works, the rock
+ * is visibly mid-topple in most frames; if it does not, the rock stands
+ * motionless in its base pose and the chat still counts the fires.
+ */
+[debugproc,sealanim]
+if_close;
+if (p_finduid(uid) = false) {
+    return;
+}
+// Right at the rock's feet, not the arena entrance: the whole point is to see
+// the model, and from the entrance it is a three-pixel smudge.
+p_teleport(0_35_83_26_49);
+if (loc_find(^inferno_rock_coord_west, inferno_loc_30337) = true) {
+    loc_change(inferno_loc_30344, ^inferno_npc_duration);
+} else if (loc_find(^inferno_rock_coord_west, inferno_loc_30344) = false) {
+    loc_add(^inferno_rock_coord_west, inferno_loc_30344, 3, centrepiece_straight, ^inferno_npc_duration);
+}
+queue(inferno_sealanim_loop, 2, 20);
+mes("Seal collapse loop armed.");
+
+[queue,inferno_sealanim_loop](int $times)
+if (loc_find(^inferno_rock_coord_west, inferno_loc_30344) = true) {
+    loc_anim(inferno_seal_collapse);
+    mes("loc_anim fired (<tostring($times)> left).");
+}
+if ($times > 0) {
+    queue(inferno_sealanim_loop, 3, sub($times, 1));
 }
 
 // Remove every encounter npc around a coord. Used on entry, so a second ::zuk
