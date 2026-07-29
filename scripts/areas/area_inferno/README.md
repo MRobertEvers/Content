@@ -198,8 +198,18 @@ make -C 3rd/rscache/tools port_lostcity
   --spotanim 660=inferno_heal_proj --spotanim 659=inferno_lava_splash \
   --spotanim 447=inferno_jad_magic_gfx --spotanim 448=inferno_jad_proj1 --spotanim 449=inferno_jad_proj2 --spotanim 450=inferno_jad_proj3 \
   --spotanim 451=inferno_jad_range_gfx --spotanim 157=inferno_jad_hit --spotanim 444=inferno_hurkot_heal_gfx \
+  --overlay-backing 72 \
   --map 35_83 --apply
 ```
+
+`--overlay-backing 72` writes the arena-floor underlay under every tile that
+has an overlay but no underlay of its own. OSRS authors the lava as
+overlay-only tiles; a 2004-era client renders the backing half of a shaped
+overlay tile from the tile's *own* underlay, so a faithful export shows black
+wedges through the whole lava band in the reference webclient — while a more
+forgiving renderer (torirs) papers over it, which is exactly how it went
+unnoticed. Tiles with no floor at all stay void: the black outside the rim is
+authored, not missing.
 
 The crag formations flanking Zuk are placed by the script, from
 `[queue,inferno_seal_clear]` — the tick the falling rocks are removed — as a

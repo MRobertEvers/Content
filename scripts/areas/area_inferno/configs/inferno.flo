@@ -3,11 +3,11 @@ overlay=yes
 colour=0xFF00FF
 occlude=no
 
-[flo_inferno_u117]
-colour=0x752222
-
 [flo_inferno_u71]
 colour=0x030303
+
+[flo_inferno_u117]
+colour=0x752222
 
 [flo_inferno_u144]
 colour=0x404040
