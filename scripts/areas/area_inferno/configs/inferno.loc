@@ -7,7 +7,6 @@ blockwalk=no
 blockrange=no
 active=yes
 hillskew=yes
-sharelight=yes
 
 [inferno_loc_30344]
 name=Falling rock
@@ -18,35 +17,30 @@ blockwalk=no
 blockrange=no
 active=yes
 hillskew=yes
-sharelight=yes
 
 [inferno_loc_30339]
 model=inferno_locmodel_33089
 width=2
 active=no
 hillskew=yes
-sharelight=yes
 
 [inferno_loc_30340]
 model=inferno_locmodel_33094
 width=2
 active=no
 hillskew=yes
-sharelight=yes
 
 [inferno_loc_30341]
 model=inferno_locmodel_33088
 width=2
 active=no
 hillskew=yes
-sharelight=yes
 
 [inferno_loc_30342]
 model=inferno_locmodel_33090
 width=2
 active=no
 hillskew=yes
-sharelight=yes
 
 [inferno_loc_30331]
 name=Roof
@@ -61,7 +55,6 @@ blockwalk=no
 blockrange=no
 active=no
 hillskew=yes
-sharelight=yes
 
 [inferno_loc_30346]
 model=inferno_locmodel_33038
@@ -71,7 +64,32 @@ blockwalk=no
 blockrange=no
 active=no
 hillskew=yes
-sharelight=yes
+
+[inferno_loc_30337]
+model=inferno_locmodel_33033
+width=5
+length=2
+blockwalk=no
+blockrange=no
+active=no
+hillskew=yes
+
+[inferno_loc_30336]
+model=inferno_locmodel_33040
+width=5
+length=2
+blockwalk=no
+blockrange=no
+active=no
+hillskew=yes
+
+[inferno_loc_30338]
+name=Ancestral Glyph
+model=inferno_locmodel_33037
+width=6
+length=3
+active=yes
+hillskew=yes
 
 [inferno_loc_6926]
 model=inferno_locmodel_6932
@@ -568,35 +586,6 @@ sharelight=yes
 model=inferno_locmodel_33066
 width=2
 active=no
-hillskew=yes
-sharelight=yes
-
-[inferno_loc_30336]
-model=inferno_locmodel_33040
-width=5
-length=2
-blockwalk=no
-blockrange=no
-active=no
-hillskew=yes
-sharelight=yes
-
-[inferno_loc_30337]
-model=inferno_locmodel_33033
-width=5
-length=2
-blockwalk=no
-blockrange=no
-active=no
-hillskew=yes
-sharelight=yes
-
-[inferno_loc_30338]
-name=Ancestral Glyph
-model=inferno_locmodel_33037
-width=6
-length=3
-active=yes
 hillskew=yes
 sharelight=yes
 

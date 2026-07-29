@@ -80,25 +80,25 @@
 // why it exports invisible; removing it is what Kronos does with it anyway, so
 // nothing is lost by not being able to express the switch.
 //
-// The two formations appear via loc_add from [queue,inferno_seal_clear] — the
-// tick the falling rocks are removed — simulating the multiloc transform this
-// revision cannot express. The ordering is the whole trick, learned twice:
+// The two formations are STATIC level-1 locs in m35_83.jm2 (the exporter's
+// --maploc lines) — where Kronos spawns them, present in BOTH states. They
+// have to be, twice over:
 //
-//  - Added BEFORE the collapse (on the same tiles: rotated they are 2x5 and
-//    their south ends cover the standing rocks' tiles), the add replaces the
-//    standing rock, loc_find stops matching, and the collapse silently never
-//    plays.
-//  - Placed STATICALLY on level 1 (where Kronos spawns them), they stand from
-//    tick zero and visually swallow the collapse — the toppling rocks play out
-//    inside the crag geometry where nobody can see them.
+//  - They carry the alcove's SIDE WALLS, so any tick without them is a hole
+//    in the cliff beside Zuk.
+//  - They can never share level 0 with the rocks: standing, falling and
+//    formation are all 5x2 on the same anchors, so a level-0 add replaces
+//    whichever rock is there — that is what silently killed the collapse
+//    animation once.
 //
-// Added the tick the tiles come free, the opening reads in order: standing
-// rocks -> toppling animation -> gone -> crag formations and rubble in their
-// place, all inside the cutscene. Level 0, because a zone update carries no
-// plane and a scripted level-1 add lands on whatever level the player is on.
+// The level-0 topple plays in front of them, exactly as it does over Kronos'
+// level-1 spawns. (An earlier note here claimed statics "swallow" the topple;
+// that observation was actually the p_delay queue stall plus the sharelight
+// lighting bug, both fixed since.) Scripted level-1 placement is impossible —
+// a zone update carries no plane — which is why they are map data.
 ^inferno_flank_marker_coord = 1_35_83_27_56
-^inferno_flank_coord_west = 0_35_83_28_52
-^inferno_flank_coord_east = 0_35_83_33_52
+^inferno_flank_coord_west = 1_35_83_28_52
+^inferno_flank_coord_east = 1_35_83_33_52
 ^inferno_flank_angle = 3
 // Kronos' collapse timing: swap to the "Falling rock" twin, let go two ticks
 // later, clear two ticks after that. The second gap is not arbitrary — the
@@ -265,3 +265,6 @@
 // gives no handle to seed state through.
 ^inferno_dir_west = 1
 ^inferno_dir_east = 2
+
+// Ticks between TzKal-Zuk dying and the arena resealing itself.
+^inferno_restore_delay = 10

@@ -22,6 +22,58 @@ fight, not a bug.
 | `::~jadhp 170` | Drive JalTok-Jad to a health, to reach its Yt-HurKot without fighting it down. Run it twice to check they only ever spawn once |
 | `::~tagheal` | Hit every Jal-MejJak for one point and stand you where they can reach you. The only way to see the barrage without swinging at one by hand |
 | `::maxrange` | Max every stat, wear the black d'hide setup with 100k rune arrows, complete all quests. Lives in `scripts/_test/scripts/cheats/cheat_maxrange.rs2`; it ends by asking which side you took in Shield of Arrav and Temple of Ikov |
+| `::~sealverify` | Assert the arena is SEALED; prints only what is wrong, or `SEAL OK` |
+| `::~sealcheck` | Print present/absent for every managed loc, both states, no judgement |
+| `::~sealreset` | Run the FIGHT→SEALED restore by itself |
+
+## Loc lifecycle
+
+The arena is two states of the same nine locs, and every transition between
+them is owned by exactly two procs. Kronos never has this problem: each fight
+runs in an instance, spawns and removals are absolute, and tearing the
+instance down restores the static map. A shared rev-254 world has no teardown,
+so the reset is explicit — and everything below exists to make the arena
+impossible to leave half-broken.
+
+| loc | sealed (static map) | fight |
+| --- | --- | --- |
+| 30338 glyph wall @30_51 | present | deleted at T0 |
+| 30337 / 30336 standing rocks @28_52 / 33_52 | present | → falling twin (T0) → animated (T0+2) → deleted (T0+4) |
+| 30343 / 30344 falling rocks | absent | the 2-tick topple |
+| 30346 / 30345 crag formations @28_52 / 33_52 (level 1) | present — static | present — static |
+| 30332 → 30339 standing→low rock @35_52 | 30332 | changed at T0+2, as the topple starts |
+| 30340 / 30342 / 30341 rubble | absent | added at T0+2, as the topple starts |
+
+Rules, each one earned:
+
+1. **Two owners.** `[debugproc,zuk]` + Zuk's `ai_queue5`/`ai_queue6` perform
+   SEALED→FIGHT; `~inferno_reset_seal` performs FIGHT→SEALED. Nothing else may
+   touch these ids — the one time something else did (the flank `loc_add`s in
+   the entry proc), it replaced the standing rocks before the collapse could
+   `loc_find` them and the animation silently died.
+2. **Exact-id guards everywhere.** Every del/change is `loc_find(<coord>,
+   <expected id>)` first; every restore add is guarded on the expected loc
+   being absent. Nothing operates on "whatever is on the tile", so nothing can
+   delete a loc it does not own.
+3. **The reset runs at both boundaries.** `::~zuk` reseals before it breaks
+   (with `^inferno_reset_delay` ticks on screen so the restore is visible),
+   and Zuk's death queues the same reset onto a nearby player
+   (`^inferno_restore_delay` after the corpse). Between the two, no path
+   leaves the arena broken: abandon the fight and the next entry reseals; win
+   it and the arena reseals itself.
+   One known gap: the death-side restore rides a normal player queue, and a
+   player who dies with Zuk (or logs out inside `^inferno_restore_delay`)
+   loses it — the next `::~zuk`'s entry reset covers that case. `::~sealverify`
+   is the one-command way to ask the server which state it is actually in.
+4. **One duration everywhere.** Every dynamic op uses
+   `^inferno_npc_duration`, so nothing expires mid-fight in a stagger; the
+   reset never *relies* on expiry, it re-asserts state.
+5. **Dynamic locs must be dynamic-safe.** A runtime `loc_add` is lit by
+   `LocType.getModel`, which does not bake face colours for `sharelight`
+   models — they wait for a static scene build that never comes, and draw with
+   their faces missing. The exporter strips `sharelight` from every
+   `--loc`-requested config (statics from the map keep theirs); 30337/30336/
+   30338 are on that list because the reset re-adds them dynamically.
 
 ## The encounter
 
@@ -193,14 +245,30 @@ make -C 3rd/rscache/tools port_lostcity
   --seq 7604=inferno_xil_melee --seq 7605=inferno_xil_range --seq 7606=inferno_xil_death --seq 7607=inferno_xil_defend \
   --seq 7610=inferno_zek_magic --seq 7612=inferno_zek_melee --seq 7613=inferno_zek_death \
   --seq 7561=inferno_seal_collapse \
-  --loc 30343 --loc 30344 --loc 30339 --loc 30340 --loc 30341 --loc 30342 \
+  --loc 30343 --loc 30344 --loc 30339 --loc 30340 --loc 30341 --loc 30342 --loc 30331 --loc 30345 --loc 30346 \
+  --loc 30337 --loc 30336 --loc 30338 \
   --spotanim 1375=inferno_zuk_proj --spotanim 1376=inferno_zek_proj --spotanim 1377=inferno_xil_proj \
   --spotanim 660=inferno_heal_proj --spotanim 659=inferno_lava_splash \
   --spotanim 447=inferno_jad_magic_gfx --spotanim 448=inferno_jad_proj1 --spotanim 449=inferno_jad_proj2 --spotanim 450=inferno_jad_proj3 \
   --spotanim 451=inferno_jad_range_gfx --spotanim 157=inferno_jad_hit --spotanim 444=inferno_hurkot_heal_gfx \
   --overlay-backing 72 \
+  --mapfill "35_83,0,28,52,29,56,#E07820" \
+  --mapfill "35_83,0,33,52,34,56,#E07820" \
+  --mapfill 35_83,0,22,52,40,59,72 \
+  --maploc 35_83,1,28,52,30346,10,3 \
+  --maploc 35_83,1,33,52,30345,10,3 \
   --map 35_83 --apply
 ```
+
+`--mapfill 35_83,0,22,52,40,59,72` floors the shelf band behind the lava — the
+strip Zuk and the crag formations stand on, which the source authors with no
+floor at all. It has to be floored for a subtler reason than looks: model
+33038 (the formations) carries 274 translucent faces, and a translucent face
+composites against whatever is behind it. Standing on void, that is black —
+the formations rendered as black-patched hulks in the reference client and
+looked like they were not rendering at all. The fill is a bounded region, not
+a default: the darkness outside the rim is authored, and flooring it would
+un-void the whole cave.
 
 `--overlay-backing 72` writes the arena-floor underlay under every tile that
 has an overlay but no underlay of its own. OSRS authors the lava as
