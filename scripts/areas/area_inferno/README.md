@@ -42,7 +42,9 @@ impossible to leave half-broken.
 | 30343 / 30344 falling rocks | absent | the 2-tick topple |
 | 30346 / 30345 crag formations @28_52 / 33_52 (level 1) | present — static | present — static |
 | 30332 → 30339 standing→low rock @35_52 | 30332 | changed at T0+2, as the topple starts |
-| 30340 / 30342 / 30341 rubble | absent | added at T0+2, as the topple starts |
+| 30333 → 30340 wall→rubble @27_52 | 30333 | changed at T0+2 |
+| 30324 → 30342 wall→rubble @27_54 | 30324 | changed at T0+2 |
+| 30334 → 30341 wall→rubble @35_54 | 30334 | changed at T0+2 |
 
 Rules, each one earned:
 
@@ -68,7 +70,26 @@ Rules, each one earned:
 4. **One duration everywhere.** Every dynamic op uses
    `^inferno_npc_duration`, so nothing expires mid-fight in a stagger; the
    reset never *relies* on expiry, it re-asserts state.
-5. **Dynamic locs must be dynamic-safe.** A runtime `loc_add` is lit by
+5. **Change statics; never bury them under adds.** The engine transmits a
+   dynamic loc's removal as a bare `LOC_DEL`, which empties the layer
+   client-side — and if that layer used to hold a static (which the dynamic's
+   `LOC_ADD_CHANGE` replaced on screen), the static is re-activated in server
+   state but never re-sent. Everyone present sees a hole until they relog,
+   while `loc_find` and a fresh login swear everything is fine — which is
+   exactly how "some walls don't come back after the reset" hid from the
+   server-side probes. A *changed static* has none of this: the engine reverts
+   it with a `LocAddChange` in both directions, and changing it back to its
+   own id makes it a plain static again. The rubble is therefore a change of
+   the wall rocks that live on those tiles (30333/30324/30342-pairs above),
+   not an add over them. Every change target is also on the `--loc` strip
+   list, because a change-back is drawn through the same dynamic lighting
+   path as an add — that is how 30332 came back sharelight-black once.
+6. **Seal loc ops never expire.** They use `^inferno_loc_duration`
+   (`^max_32bit_int`): expiry of a dynamic reaches clients as that same bare
+   `LOC_DEL`, so a staggered expiry hours later would re-open the holes this
+   rule set closes. The two owning procs are the only things that move the
+   arena between states.
+7. **Dynamic locs must be dynamic-safe.** A runtime `loc_add` is lit by
    `LocType.getModel`, which does not bake face colours for `sharelight`
    models — they wait for a static scene build that never comes, and draw with
    their faces missing. The exporter strips `sharelight` from every
@@ -246,7 +267,7 @@ make -C 3rd/rscache/tools port_lostcity
   --seq 7610=inferno_zek_magic --seq 7612=inferno_zek_melee --seq 7613=inferno_zek_death \
   --seq 7561=inferno_seal_collapse \
   --loc 30343 --loc 30344 --loc 30339 --loc 30340 --loc 30341 --loc 30342 --loc 30331 --loc 30345 --loc 30346 \
-  --loc 30337 --loc 30336 --loc 30338 \
+  --loc 30337 --loc 30336 --loc 30338 --loc 30332 --loc 30333 --loc 30324 --loc 30334 \
   --spotanim 1375=inferno_zuk_proj --spotanim 1376=inferno_zek_proj --spotanim 1377=inferno_xil_proj \
   --spotanim 660=inferno_heal_proj --spotanim 659=inferno_lava_splash \
   --spotanim 447=inferno_jad_magic_gfx --spotanim 448=inferno_jad_proj1 --spotanim 449=inferno_jad_proj2 --spotanim 450=inferno_jad_proj3 \

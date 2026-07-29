@@ -251,6 +251,15 @@
 // in a real fight.
 ^inferno_healer_watch_coord = 0_35_83_31_45
 
+// Seal loc ops use a duration that never fires. Expiry is the enemy here, not
+// the safety net: a dynamic loc's expiry (and only its expiry) is delivered to
+// clients as a bare LOC_DEL, and a LOC_DEL on a layer that used to hold a
+// static EMPTIES it client-side — the engine re-activates the static in server
+// state but never re-transmits it, so watchers see a hole until they relog.
+// With no expiry, every transition belongs to the two owning procs, which
+// always speak in loc_change/loc_add events the client applies correctly.
+^inferno_loc_duration = ^max_32bit_int
+
 // How long a spawned encounter npc lives before the engine reclaims it. Every
 // npc_add needs a positive duration, so this doubles as the safety net that
 // clears the arena if a fight is abandoned.

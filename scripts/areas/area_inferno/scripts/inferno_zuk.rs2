@@ -102,22 +102,22 @@ cam_reset;
  */
 [proc,inferno_reset_seal]
 if (loc_find(^inferno_rock_coord_west, inferno_loc_30337) = false) {
-    loc_add(^inferno_rock_coord_west, inferno_loc_30337, 3, centrepiece_straight, ^inferno_npc_duration);
+    loc_add(^inferno_rock_coord_west, inferno_loc_30337, 3, centrepiece_straight, ^inferno_loc_duration);
 }
 if (loc_find(^inferno_rock_coord_east, inferno_loc_30336) = false) {
-    loc_add(^inferno_rock_coord_east, inferno_loc_30336, 3, centrepiece_straight, ^inferno_npc_duration);
+    loc_add(^inferno_rock_coord_east, inferno_loc_30336, 3, centrepiece_straight, ^inferno_loc_duration);
 }
 if (loc_find(^inferno_glyph_loc_coord, inferno_loc_30338) = false) {
-    loc_add(^inferno_glyph_loc_coord, inferno_loc_30338, 3, centrepiece_straight, ^inferno_npc_duration);
+    loc_add(^inferno_glyph_loc_coord, inferno_loc_30338, 3, centrepiece_straight, ^inferno_loc_duration);
 }
 // The low form goes back to the standing piece it was changed from.
 if (loc_find(^inferno_rubble_change_coord, inferno_loc_30339) = true) {
-    loc_change(inferno_loc_30332, ^inferno_npc_duration);
+    loc_change(inferno_loc_30332, ^inferno_loc_duration);
 }
-// The three added rubble pieces come out entirely.
-~inferno_break_seal(^inferno_rubble_coord_west_near, inferno_loc_30340);
-~inferno_break_seal(^inferno_rubble_coord_west_far, inferno_loc_30342);
-~inferno_break_seal(^inferno_rubble_coord_east_far, inferno_loc_30341);
+// The rubble pieces change back into the standing wall rocks they came from.
+~inferno_rubble(^inferno_rubble_coord_west_near, inferno_loc_30340, inferno_loc_30333);
+~inferno_rubble(^inferno_rubble_coord_west_far, inferno_loc_30342, inferno_loc_30324);
+~inferno_rubble(^inferno_rubble_coord_east_far, inferno_loc_30341, inferno_loc_30334);
 
 /**
  * Take one piece of the seal down. Idempotent, because a second ::~zuk finds
@@ -125,7 +125,7 @@ if (loc_find(^inferno_rubble_change_coord, inferno_loc_30339) = true) {
  */
 [proc,inferno_break_seal](coord $coord, loc $loc)
 if (loc_find($coord, $loc) = true) {
-    loc_del(^inferno_npc_duration);
+    loc_del(^inferno_loc_duration);
 }
 
 /**
@@ -135,7 +135,7 @@ if (loc_find($coord, $loc) = true) {
  */
 [proc,inferno_collapse_rock](coord $coord, loc $standing, loc $falling)
 if (loc_find($coord, $standing) = true) {
-    loc_change($falling, ^inferno_npc_duration);
+    loc_change($falling, ^inferno_loc_duration);
 }
 
 // The rocks let go, and are cleared as the animation finishes. Both steps ride
@@ -158,11 +158,11 @@ if (loc_find(^inferno_rock_coord_west, inferno_loc_30344) = true) {
 // form where it was, and three low ones are added around it. Everything on
 // its own tiles arrives now; only the crag formations cannot — see below.
 if (loc_find(^inferno_rubble_change_coord, inferno_loc_30332) = true) {
-    loc_change(inferno_loc_30339, ^inferno_npc_duration);
+    loc_change(inferno_loc_30339, ^inferno_loc_duration);
 }
-~inferno_rubble(^inferno_rubble_coord_west_near, inferno_loc_30340, ^inferno_rubble_angle_west);
-~inferno_rubble(^inferno_rubble_coord_west_far, inferno_loc_30342, ^inferno_rubble_angle_west);
-~inferno_rubble(^inferno_rubble_coord_east_far, inferno_loc_30341, ^inferno_rubble_angle_east);
+~inferno_rubble(^inferno_rubble_coord_west_near, inferno_loc_30333, inferno_loc_30340);
+~inferno_rubble(^inferno_rubble_coord_west_far, inferno_loc_30324, inferno_loc_30342);
+~inferno_rubble(^inferno_rubble_coord_east_far, inferno_loc_30334, inferno_loc_30341);
 
 [ai_queue6,inferno_zuk]
 if (loc_find(^inferno_rock_coord_west, inferno_loc_30344) = true) {
@@ -191,11 +191,19 @@ while (huntnext = true) {
 }
 
 /**
- * Drop one piece of low rock. Spawned rather than changed — these have nothing
- * standing in their place to begin with, they are only there once Zuk is out.
+ * Drop one piece of low rock, by CHANGING the standing wall piece that lives
+ * on that tile — never by adding over it. The engine only re-transmits a
+ * covered static... never: a dynamic's removal reaches clients as a bare
+ * LOC_DEL, which empties the layer the add had replaced, and the wall piece
+ * stays invisible to everyone present until they relog. A changed static, by
+ * contrast, reverts with a LocAddChange in both directions, and changing it
+ * back to its own id makes it a plain static again — the engine's own
+ * first-class idiom for exactly this.
  */
-[proc,inferno_rubble](coord $coord, loc $loc, int $angle)
-loc_add($coord, $loc, $angle, centrepiece_straight, ^inferno_npc_duration);
+[proc,inferno_rubble](coord $coord, loc $standing, loc $rubble)
+if (loc_find($coord, $standing) = true) {
+    loc_change($rubble, ^inferno_loc_duration);
+}
 
 [proc,inferno_anim_rock](coord $coord, loc $loc)
 if (loc_find($coord, $loc) = true) {
@@ -246,6 +254,18 @@ if (loc_find(^inferno_flank_coord_east, inferno_loc_30345) = false) {
 }
 if (loc_find(^inferno_rubble_change_coord, inferno_loc_30339) = true) {
     mes("BAD: low 30339 still present");
+    $bad = add($bad, 1);
+}
+if (loc_find(^inferno_rubble_coord_west_near, inferno_loc_30333) = false) {
+    mes("BAD: wall 30333 absent");
+    $bad = add($bad, 1);
+}
+if (loc_find(^inferno_rubble_coord_west_far, inferno_loc_30324) = false) {
+    mes("BAD: wall 30324 absent");
+    $bad = add($bad, 1);
+}
+if (loc_find(^inferno_rubble_coord_east_far, inferno_loc_30334) = false) {
+    mes("BAD: wall 30334 absent");
     $bad = add($bad, 1);
 }
 if (loc_find(^inferno_rubble_coord_west_near, inferno_loc_30340) = true) {
