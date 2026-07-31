@@ -5,18 +5,15 @@
 // chances to hit, it is one chance that pays out four times. The accuracy roll
 // is retried at most four times, and where it first lands decides the shape:
 //
-//   1st connects   d, d/2, d/4, d/4      (the classic 4-2-1-1)
-//   2nd connects   0, d, d/2, d/2
-//   3rd connects   0, 0, d, d            capped at 75% of max
-//   4th connects   0, 0, 0, d            rolled against 150% of max
-//   none connect   0, 0, 1, 1            a consolation two damage
+//   1st connects   d, d/2, d/4, d/4+1    d in [max/2, max-1]   (the classic 4-2-1-1)
+//   2nd connects   0, d, d/2, d/2+1      d in [3max/8, 7max/8]
+//   3rd connects   0, 0, d, d+1          d in [max/4, 3max/4]
+//   4th connects   0, 0, 0, d            d in [max/4, 5max/4]
+//   none connect   0, 0, 1, 1            two thirds of the time; else nothing
 //
-// Ported from Kronos' DragonClaws.java, which is the only source that states
-// the arithmetic rather than describing it. Two details from there that the
-// wiki does not give: every roll gets a 25% accuracy boost, and the minimum
-// damage floor is 4 rather than 0 — anything lower produces the stray zeros the
-// weapon is not supposed to roll. One time in six the floor is dropped back to
-// 4 outright, which is what puts the occasional low first hit in the spread.
+// Mechanics per the OSRS wiki (Dragon claws, "Slice and Dice"): every roll has
+// ordinary accuracy, the fourth hit in scenarios 1-3 lands one point above the
+// third, and four misses still deal 2 damage about two rolls in three.
 // The body animation is native `impale`, not the weapon's own OSRS animation,
 // and that is a hard limit rather than a shortcut.
 //
@@ -56,65 +53,65 @@ npc_anim(npc_param(defend_anim), 20);
 def_int $maxhit = %com_maxhit;
 def_int $max_dealt = npc_param(max_dealt);
 
-// The floor. Kronos rolls a die every spec for it, so a first hit far below
-// half max is uncommon but not impossible.
-def_int $minhit = max(4, calc($maxhit / 2));
-if (random(6) = 0) {
-    $minhit = 4;
-}
-
 def_int $hit1 = 0;
 def_int $hit2 = 0;
 def_int $hit3 = 0;
 def_int $hit4 = 0;
 
 if (~pvm_dragon_claws_roll = true) {
-    // 4-2-1-1. The fourth hit picks up the odd point the halving dropped, so
-    // hits 2..4 always sum to exactly hit 1.
-    $hit1 = ~pvm_dragon_claws_damage($minhit, $maxhit, $max_dealt);
+    // 4-2-1-1. The first hit rolls between half the ordinary max and one
+    // below it; the fourth is one more than the third.
+    $hit1 = ~pvm_dragon_claws_damage(calc($maxhit / 2), sub($maxhit, 1), $max_dealt);
     $hit2 = calc($hit1 / 2);
     $hit3 = calc($hit2 / 2);
-    $hit4 = add($hit3, calc($hit2 % 2));
+    $hit4 = min(add($hit3, 1), $max_dealt);
 } else if (~pvm_dragon_claws_roll = true) {
-    // 0-4-2-2.
-    $hit2 = ~pvm_dragon_claws_damage($minhit, $maxhit, $max_dealt);
+    // 0-4-2-2, rolled between three and seven eighths of max.
+    $hit2 = ~pvm_dragon_claws_damage(scale(3, 8, $maxhit), scale(7, 8, $maxhit), $max_dealt);
     $hit3 = calc($hit2 / 2);
-    $hit4 = $hit3;
+    $hit4 = min(add($hit3, 1), $max_dealt);
 } else if (~pvm_dragon_claws_roll = true) {
-    // 0-0-3-3, both capped at three quarters of max.
-    $hit3 = ~pvm_dragon_claws_damage(0, scale(75, 100, $maxhit), $max_dealt);
-    $hit4 = $hit3;
+    // 0-0-3-3, rolled between one and three quarters of max.
+    $hit3 = ~pvm_dragon_claws_damage(calc($maxhit / 4), scale(3, 4, $maxhit), $max_dealt);
+    $hit4 = min(add($hit3, 1), $max_dealt);
 } else if (~pvm_dragon_claws_roll = true) {
-    // 0-0-0-5. The consolation for three misses is a roll against half again
-    // the normal maximum.
-    $hit4 = ~pvm_dragon_claws_damage(0, scale(150, 100, $maxhit), $max_dealt);
+    // 0-0-0-5. The consolation for three misses is a roll against a quarter
+    // more than the normal maximum.
+    $hit4 = ~pvm_dragon_claws_damage(calc($maxhit / 4), scale(5, 4, $maxhit), $max_dealt);
 } else {
-    // Four misses. Not quite nothing: the claws still scratch for one apiece.
-    $hit3 = 1;
-    $hit4 = 1;
+    // Four misses. Two thirds of the time the claws still scratch for one
+    // apiece; the rest of the time it is a clean whiff.
+    if (random(3) < 2) {
+        $hit3 = 1;
+        $hit4 = 1;
+    }
 }
 
 // Hits one and two land now, three and four on the following tick — the two
-// pairs of hitsplats the weapon is recognised by.
+// pairs of hitsplats the weapon is recognised by. The second pair is delayed
+// by 2, not 1: the npc queue decrements a request's delay before its <= 0
+// check, so delays 0 and 1 both fire on the same (next) npc tick. With all
+// four on one tick the engine's two hitmark slots wrap and hits three and
+// four overwrite the first pair's hitsplats — two splats render, not four.
 ~pvm_dragon_claws_apply($hit1);
 ~pvm_dragon_claws_apply($hit2);
 ~npc_retaliate(0);
 npc_queue(2, $hit1, 0);
 npc_queue(2, $hit2, 0);
-npc_queue(2, $hit3, 1);
-npc_queue(2, $hit4, 1);
+npc_queue(2, $hit3, 2);
+npc_queue(2, $hit4, 2);
 ~pvm_dragon_claws_apply($hit3);
 ~pvm_dragon_claws_apply($hit4);
 
 /**
- * One accuracy roll, with the spec's 25% boost.
+ * One accuracy roll, at ordinary accuracy — the spec has no accuracy boost.
  *
  * Rolled against the npc's *slash* defence whatever the player's attack style,
  * because the spec animation is a slash whichever style the claws were set to
  * — the same reasoning the dragon dagger's spec uses.
  */
 [proc,pvm_dragon_claws_roll]()(boolean)
-def_int $attackroll = scale(125, 100, ~player_attack_roll_specific(%damagetype));
+def_int $attackroll = ~player_attack_roll_specific(%damagetype);
 def_int $defenceroll = ~npc_defence_roll_specific(^slash_style);
 if (randominc($attackroll) > randominc($defenceroll)) {
     return(true);

@@ -79,11 +79,17 @@ Rules, each one earned:
    exactly how "some walls don't come back after the reset" hid from the
    server-side probes. A *changed static* has none of this: the engine reverts
    it with a `LocAddChange` in both directions, and changing it back to its
-   own id makes it a plain static again. The rubble is therefore a change of
-   the wall rocks that live on those tiles (30333/30324/30342-pairs above),
-   not an add over them. Every change target is also on the `--loc` strip
-   list, because a change-back is drawn through the same dynamic lighting
-   path as an add — that is how 30332 came back sharelight-black once.
+   own id makes it a plain static again. The rubble would therefore be a
+   change of the wall rocks that live on those tiles — except a change keeps
+   the loc's angle, and Kronos turns the west rubble 180 degrees from the
+   walls it replaces (spawn angle 1 against the statics' 3). So the rubble is
+   a same-tick del+add swap (`~inferno_loc_swap`): the client sees one
+   LocDel+LocAddChange pair, the layer is never left empty for even a tick,
+   and the reset swaps back at `^inferno_wall_angle`. The 30332→30339 pair
+   keeps the plain change, because Kronos keeps its angle there. Every swap
+   and change target is also on the `--loc` strip list, because both are drawn
+   through the same dynamic lighting path as an add — that is how 30332 came
+   back sharelight-black once.
 6. **Seal loc ops never expire.** They use `^inferno_loc_duration`
    (`^max_32bit_int`): expiry of a dynamic reaches clients as that same bare
    `LOC_DEL`, so a staggered expiry hours later would re-open the holes this
