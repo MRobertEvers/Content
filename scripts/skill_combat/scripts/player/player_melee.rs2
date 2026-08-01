@@ -106,11 +106,41 @@ p_opnpc(2);
 def_int $dx = sub(coordx(npc_coord), coordx(coord));
 def_int $dz = sub(coordz(npc_coord), coordz(coord));
 
+~scythe_sweep_gfx($dx, $dz);
+
 def_coord $tile2 = movecoord(npc_coord, $dx, 0, $dz);
 ~scythe_cleave_hit($tile2, divide($damage, 2));
 
 def_coord $tile3 = movecoord($tile2, $dx, 0, $dz);
 ~scythe_cleave_hit($tile3, divide($damage, 4));
+
+// The sweep drawn on the target's tile.
+//
+// Four assets, one per compass direction — which is the whole answer to why
+// this graphic "varies" between swings. The client is not picking at random:
+// the direction of the swing picks the graphic, and that direction is the
+// same dx/dz the cleave above already has in hand, so nothing extra needs
+// working out.
+//
+// Melee is orthogonal-only, so exactly one of dx/dz is non-zero here and the
+// x test can come first without needing a tie-break. The `else` catching
+// dz <= 0 rather than testing dz < 0 explicitly is deliberate: dx and dz both
+// zero would mean the player and the target share a tile, which melee range
+// makes impossible, and a swing with no graphic at all would be a stranger
+// failure than a swing facing south.
+//
+// Height 0 puts it on the floor, which is where a sweep along the ground
+// belongs; delay 0 lands it on the same tick as the swing.
+[proc,scythe_sweep_gfx](int $dx, int $dz)
+if ($dx > 0) {
+    spotanim_map(dragon_halberd_special_east_red, npc_coord, 0, 0);
+} else if ($dx < 0) {
+    spotanim_map(dragon_halberd_special_west_red, npc_coord, 0, 0);
+} else if ($dz > 0) {
+    spotanim_map(dragon_halberd_special_north_red, npc_coord, 0, 0);
+} else {
+    spotanim_map(dragon_halberd_special_south_red, npc_coord, 0, 0);
+}
 
 // One splash target. `~npc_default_damage` is the same primitive
 // `[ai_queue2,_]` calls for the primary hit (npc_combat.rs2) — it lands the

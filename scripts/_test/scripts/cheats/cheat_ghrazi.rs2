@@ -31,3 +31,28 @@ inv_setslot(worn, ^wearpos_hat, rune_full_helm, 1);
 ~update_all(null);
 
 mes("Ghrazi rapier equipped.");
+
+// ::~ghraziswing — the ported attack animation on the spot, no npc, no
+// combat. See cheat_vitur.rs2 for why a ported animation wants this.
+//
+// Note there is no ::~ghrazistand counterpart: the cache has no ready/idle
+// animation for this weapon (only ghrazi_rapier_attack exists — see
+// content/ghrazi_rapier/README.md), so its idle is rev 254's own default and
+// there is nothing item-specific to isolate.
+[debugproc,ghraziswing]
+if_close;
+if (p_finduid(uid) = false) {
+    @please_finish;
+    return;
+}
+~ghraziswing_fire(20);
+mes("Rapier attack animation firing on a loop.");
+
+[proc,ghraziswing_fire](int $times)
+anim(ghrazi_rapier_attack, 0);
+if ($times > 0) {
+    queue(ghraziswing_repeat, 3, sub($times, 1));
+}
+
+[queue,ghraziswing_repeat](int $times)
+~ghraziswing_fire($times);

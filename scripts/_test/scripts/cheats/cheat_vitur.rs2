@@ -29,3 +29,29 @@ inv_setslot(worn, ^wearpos_hat, rune_full_helm, 1);
 ~update_all(null);
 
 mes("Scythe of vitur equipped.");
+
+// ::~viturswing — play the ported attack animation on the spot, no npc and no
+// combat, the way ::dcspec does for the claws. This is the isolation that
+// matters for a *ported* animation: it separates "the retarget is wrong" from
+// "combat never reached the anim call", and it is the only way to watch the
+// idle (scythe_of_vitur_ready) and the swing back to back.
+//
+// Re-fired on a queue rather than played once, so a headless capture cannot
+// land in the gap after the animation ends and before the idle resumes.
+[debugproc,viturswing]
+if_close;
+if (p_finduid(uid) = false) {
+    @please_finish;
+    return;
+}
+~viturswing_fire(20);
+mes("Scythe attack animation firing on a loop.");
+
+[proc,viturswing_fire](int $times)
+anim(scythe_of_vitur_attack, 0);
+if ($times > 0) {
+    queue(viturswing_repeat, 3, sub($times, 1));
+}
+
+[queue,viturswing_repeat](int $times)
+~viturswing_fire($times);

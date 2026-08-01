@@ -23,9 +23,10 @@ param=slashattack,55
 param=crushattack,0
 param=strengthbonus,93
 param=attackrate,4
-param=stabattack_anim,human_sword_stab
+param=ready_baseanim,human_ds_ready
+param=stabattack_anim,ghrazi_rapier_attack
 param=slashattack_anim,human_sword_slash
-param=defend_anim,human_sword_def
+param=defend_anim,warguild_parry_defend
 param=stab_sound,stabsword_stab
 param=slash_sound,stabsword_slash
 
