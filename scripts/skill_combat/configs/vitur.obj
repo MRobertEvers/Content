@@ -1,0 +1,37 @@
+[scythe_of_vitur]
+name=Scythe of vitur
+desc=A powerful scythe.
+model=vitur_model_35742
+2dzoom=2105
+2dxan=327
+2dyan=23
+2dxof=1
+2dyof=17
+cost=4000000
+members=yes
+weight=3175g
+wearpos=righthand
+wearpos2=lefthand
+manwear=vitur_model_35371,0
+womanwear=vitur_model_32906,0
+iop2=Wield
+iop3=Check
+iop4=Uncharge
+category=weapon_scythe
+param=stabattack,70
+param=slashattack,125
+param=crushattack,30
+param=stabdefence,-2
+param=slashdefence,8
+param=crushdefence,10
+param=magicattack,-6
+param=strengthbonus,75
+param=attackrate,5
+param=stabattack_anim,human_scythe_sweep
+param=slashattack_anim,human_scythe_sweep
+param=crushattack_anim,human_scythe_sweep
+param=defend_anim,human_scythe_spin
+param=stab_sound,staff_stab
+param=slash_sound,staff_hit
+param=crush_sound,staff_hit
+

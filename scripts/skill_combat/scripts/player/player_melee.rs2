@@ -40,6 +40,22 @@ if ($weapon ! null) {
     }
 }
 
+// Scythe of Vitur cleave.
+//
+// Not a special attack (no spec bar, no energy cost) — every normal hit with
+// this specific item does this, so it is gated on the item rather than the
+// `weapon_scythe` category (the tree's other scythes, ported here fifteen
+// years before this one existed, hit once). $damage is the primary target's
+// already-rolled damage, and the `$damage > 0` guard is deliberate and not
+// redundant with the hit-roll branch above: that branch can still leave
+// $damage at 0 on a *capped* hit (`npc_param(max_dealt)` clamping a roll down
+// to nothing), and a miss on the primary has to mean nothing lands on the
+// other two tiles either, not a visible 0/block splat on npcs that were never
+// actually swung at.
+if ($weapon = scythe_of_vitur & $damage > 0) {
+    ~scythe_cleave($damage);
+}
+
 //mes("attackstyle: <tostring(%attackstyle)>, damagestyle: <tostring(%damagestyle)>, damage: <tostring($damage)>, damagetype: <tostring(%damagetype)>");
 anim(%com_attackanim, 0);
 sound_synth(%com_attacksound, 0, 0);
@@ -57,3 +73,62 @@ if ($weapon = null) {
 }
 
 p_opnpc(2);
+
+// ------------------------------------------------------------------
+// Scythe of Vitur — cleave
+// ------------------------------------------------------------------
+//
+// No LostCity reference: this content tree preserves rev 254 (7 Sept 2004),
+// fifteen years before Theatre of Blood — `grep -ril vitur
+// LostCity_Server/content` finds nothing but pack files and this port. The
+// only scythe content the tree already had is the generic `weapon_scythe`
+// category (a style table plus the defensive-spin case in
+// skill_combat/scripts/combat.rs2), which this item also uses for its base
+// stats but which says nothing about hitting more than one target.
+//
+// The live mechanic: the primary target's hit is the only roll. The tile
+// directly behind it, continuing the swing's own direction (attacker ->
+// target, extended), takes 50% of that damage; the tile behind that one takes
+// 25%. Both floor — `divide` truncates towards zero on these non-negative
+// inputs, matching the client's own display of "half of an odd number
+// rounds down".
+//
+// The direction comes from where the attacker is standing relative to the
+// target rather than from a facing byte: melee is orthogonal-only (a target
+// has to be squared up on a shared row or column to be in range at all), so
+// exactly one of dx/dz is +-1 at the moment of the swing, and continuing that
+// same offset twice is the line the swing is already travelling along.
+//
+// `npc_findallany` is unfiltered by npc type on purpose — whatever is
+// standing on that tile takes the splash, the same as the live item; it does
+// not care whether the second target is the same monster as the first.
+[proc,scythe_cleave](int $damage)
+def_int $dx = sub(coordx(npc_coord), coordx(coord));
+def_int $dz = sub(coordz(npc_coord), coordz(coord));
+
+def_coord $tile2 = movecoord(npc_coord, $dx, 0, $dz);
+~scythe_cleave_hit($tile2, divide($damage, 2));
+
+def_coord $tile3 = movecoord($tile2, $dx, 0, $dz);
+~scythe_cleave_hit($tile3, divide($damage, 4));
+
+// One splash target. `~npc_default_damage` is the same primitive
+// `[ai_queue2,_]` calls for the primary hit (npc_combat.rs2) — it lands the
+// splat, clamps to current hitpoints and queues the death script itself if
+// this is the killing blow, so a cleave that finishes off a low-health
+// secondary target dies correctly rather than going to 0 hp and standing
+// there.
+//
+// The hitpoints check is what keeps a tile with nothing on it, or an npc
+// already dead from something else this tick, from paying (and being paid)
+// xp for a hit that could not land — `~npc_default_damage` itself no-ops on
+// 0 hp, but xp has to be gated here, before that call, or it pays out first.
+[proc,scythe_cleave_hit](coord $tile, int $damage)
+npc_findallany($tile, 0, 0);
+if (npc_findnext = true) {
+    if (npc_stat(hitpoints) > 0) {
+        def_int $capped = min($damage, npc_stat(hitpoints));
+        ~give_combat_experience(%damagestyle, $capped, %npc_combat_xp_multiplier);
+        ~npc_default_damage($damage);
+    }
+}

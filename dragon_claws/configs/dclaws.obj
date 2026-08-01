@@ -1,0 +1,34 @@
+[dragon_claws]
+name=Dragon claws
+desc=A set of fighting claws.
+model=dclaws_model_32784
+2dzoom=886
+2dxan=349
+2dyan=15
+2dxof=-1
+2dyof=8
+cost=205000
+members=yes
+weight=907g
+wearpos=righthand
+wearpos2=lefthand
+manwear=dclaws_model_29191,0
+womanwear=dclaws_model_29191,6
+iop2=Wield
+category=weapon_claws
+param=stabattack,41
+param=slashattack,57
+param=crushattack,-4
+param=stabdefence,13
+param=slashdefence,26
+param=crushdefence,7
+param=strengthbonus,56
+param=attackrate,4
+param=stabattack_anim,claws_punch
+param=slashattack_anim,human_axe_chop
+param=defend_anim,human_axe_block
+param=stab_sound,stabsword_stab
+param=slash_sound,stabsword_slash
+param=specwep,^true
+param=sa_energy,500
+

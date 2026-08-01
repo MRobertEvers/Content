@@ -1,0 +1,55 @@
+// A melee player holding dragon claws with a full special bar, for testing
+// "Slice and Dice" without first grinding to 60 Attack and finding a pair.
+//
+// The worn slots it fills are overwritten, not swapped — whatever was in them
+// is gone. It is a cheat; bank anything that matters first.
+
+[debugproc,dclaws]
+if_close;
+if (p_finduid(uid) = false) {
+    @please_finish;
+    return;
+}
+
+def_int $max_xp = 130344310;
+stat_advance(attack, $max_xp);
+stat_advance(defence, $max_xp);
+stat_advance(strength, $max_xp);
+stat_advance(hitpoints, $max_xp);
+
+inv_setslot(worn, ^wearpos_rhand, dragon_claws, 1);
+inv_setslot(worn, ^wearpos_torso, rune_platebody, 1);
+inv_setslot(worn, ^wearpos_legs, rune_platelegs, 1);
+inv_setslot(worn, ^wearpos_hat, rune_full_helm, 1);
+~update_all(null);
+
+// A full bar, so the first attack after this can be the spec. The scale is
+// 0..1000 and the claws cost 500, so this is two specs' worth.
+%sa_energy = ^sa_max_energy;
+
+mes("Dragon claws equipped, special attack bar full.");
+
+// ::~dcspec — fire the spec's animation and graphic on the spot, with no npc
+// and no combat. Isolates exactly the failure that showed up in play: the claw
+// slash rendering over a player who never moved, because spotanim() has no
+// priority gate and playAnimation() does.
+[debugproc,dcspec]
+if_close;
+if (p_finduid(uid) = false) {
+    @please_finish;
+    return;
+}
+// Re-fired on a queue rather than played once, so a headless capture cannot
+// land in the gap between the animation ending and the screenshot.
+~dcspec_fire(20);
+mes("Spec animation firing on a loop.");
+
+[proc,dcspec_fire](int $times)
+anim(dragon_claws_spec, 0);
+spotanim_pl(dragon_claws_spec_spot, 96, 0);
+if ($times > 0) {
+    queue(dcspec_repeat, 3, sub($times, 1));
+}
+
+[queue,dcspec_repeat](int $times)
+~dcspec_fire($times);

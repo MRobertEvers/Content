@@ -81,6 +81,15 @@ $effective_magic_defence = add($effective_magic_defence, 8); // no idea if there
 
 // defence rolls and attack rolls
 %com_stabattack = ~combat_stat($effective_attack, $stabattack);
+
+// Ghrazi rapier passive: +25% to the stab attack roll only (no max hit
+// change). No LostCity reference — Theatre of Blood is fifteen years past
+// rev 254 — so this is authored fresh and gated on the item rather than its
+// category (`weapon_stab`, shared with every other stab sword).
+if ($weapon = ghrazi_rapier) {
+    %com_stabattack = scale(125, 100, %com_stabattack);
+}
+
 %com_stabdef = ~combat_stat($effective_defence, $stabdefence);
 %com_slashattack = ~combat_stat($effective_attack, $slashattack);
 %com_slashdef = ~combat_stat($effective_defence, $slashdefence);
@@ -186,6 +195,12 @@ $effective_magic_defence = add($effective_magic_defence, 8); // no idea if there
 
 // defence rolls and attack rolls
 .%com_stabattack = ~combat_stat($effective_attack, $stabattack);
+
+// Ghrazi rapier passive — see the primary copy above for why.
+if ($weapon = ghrazi_rapier) {
+    .%com_stabattack = scale(125, 100, .%com_stabattack);
+}
+
 .%com_stabdef = ~combat_stat($effective_defence, $stabdefence);
 .%com_slashattack = ~combat_stat($effective_attack, $slashattack);
 .%com_slashdef = ~combat_stat($effective_defence, $slashdefence);

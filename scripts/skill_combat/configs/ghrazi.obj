@@ -1,0 +1,31 @@
+[ghrazi_rapier]
+name=Ghrazi rapier
+desc=A razor sharp rapier, smeared with vampyric blood.
+model=ghrazi_model_35739
+2dzoom=2064
+2dxan=0
+2dyan=1603
+2dzan=552
+2dxof=5
+2dyof=-18
+cost=5000000
+members=yes
+weight=1814g
+wearpos=righthand
+manwear=ghrazi_model_35374,0
+womanwear=ghrazi_model_35369,0
+recol1s=90
+recol1d=55774
+iop2=Wield
+category=weapon_stab
+param=stabattack,100
+param=slashattack,55
+param=crushattack,0
+param=strengthbonus,93
+param=attackrate,4
+param=stabattack_anim,human_sword_stab
+param=slashattack_anim,human_sword_slash
+param=defend_anim,human_sword_def
+param=stab_sound,stabsword_stab
+param=slash_sound,stabsword_slash
+
