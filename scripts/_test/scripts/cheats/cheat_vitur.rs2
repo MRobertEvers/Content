@@ -1,0 +1,31 @@
+// A melee player holding a Scythe of Vitur, for testing the cleave without
+// grinding to 75 Strength / 80 Attack and finding one — see
+// content/scythe_of_vitur/README.md for the mechanic itself.
+//
+// Unlike ::dclaws there is no spec bar to fill: this item has no special
+// attack, the cleave fires on every ordinary hit. Attack any two npcs
+// standing behind each other in a line to see it.
+//
+// The worn slots it fills are overwritten, not swapped — whatever was in
+// them is gone. It is a cheat; bank anything that matters first.
+
+[debugproc,vitur]
+if_close;
+if (p_finduid(uid) = false) {
+    @please_finish;
+    return;
+}
+
+def_int $max_xp = 130344310;
+stat_advance(attack, $max_xp);
+stat_advance(defence, $max_xp);
+stat_advance(strength, $max_xp);
+stat_advance(hitpoints, $max_xp);
+
+inv_setslot(worn, ^wearpos_rhand, scythe_of_vitur, 1);
+inv_setslot(worn, ^wearpos_torso, rune_platebody, 1);
+inv_setslot(worn, ^wearpos_legs, rune_platelegs, 1);
+inv_setslot(worn, ^wearpos_hat, rune_full_helm, 1);
+~update_all(null);
+
+mes("Scythe of vitur equipped.");

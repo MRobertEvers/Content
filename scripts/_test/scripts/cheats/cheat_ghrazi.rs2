@@ -1,0 +1,33 @@
+// A melee player holding a Ghrazi rapier, for testing the +25% stab accuracy
+// passive without grinding to 80 Attack and finding one — see
+// content/ghrazi_rapier/README.md for the mechanic itself.
+//
+// No spec bar to fill: this item has no special attack, the passive is
+// always on while wielded. One-handed, so a shield goes in the other hand —
+// unlike ::dclaws/::vitur, which are both two-handed and leave that slot
+// empty.
+//
+// The worn slots it fills are overwritten, not swapped — whatever was in
+// them is gone. It is a cheat; bank anything that matters first.
+
+[debugproc,ghrazi]
+if_close;
+if (p_finduid(uid) = false) {
+    @please_finish;
+    return;
+}
+
+def_int $max_xp = 130344310;
+stat_advance(attack, $max_xp);
+stat_advance(defence, $max_xp);
+stat_advance(strength, $max_xp);
+stat_advance(hitpoints, $max_xp);
+
+inv_setslot(worn, ^wearpos_rhand, ghrazi_rapier, 1);
+inv_setslot(worn, ^wearpos_lhand, rune_kiteshield, 1);
+inv_setslot(worn, ^wearpos_torso, rune_platebody, 1);
+inv_setslot(worn, ^wearpos_legs, rune_platelegs, 1);
+inv_setslot(worn, ^wearpos_hat, rune_full_helm, 1);
+~update_all(null);
+
+mes("Ghrazi rapier equipped.");
